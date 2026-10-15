@@ -340,7 +340,6 @@ import {
   browserProfilePartitionTarget,
   stripWorkspaceCredentialEnv,
   PROVIDER_CREDENTIAL_ENV,
-  persistableInstanceConfigs,
   type AppConfig,
   vpsSshAlias,
   browserEngineAttachCdpUrl,
@@ -8635,9 +8634,7 @@ function outstandingAssignmentsPrompt(threadId: string): string {
 /** The card that keeps queued work from starting: its teammate has no free
  * slot, and one of the threads holding one waits on the person. Only the
  * person frees that slot; every other wait frees itself. */
-function queuedBehindPerson(
-  node: HandoffView
-):
+function queuedBehindPerson(node: HandoffView):
   | {
       threadId: string;
       kind: "approval" | "question" | "review";
