@@ -68,7 +68,7 @@ describe("what the ledger books for a settled turn", () => {
       default: { inputPerMillion: 10, outputPerMillion: 10 },
     };
     expect(ledgerCost({ ...codex, costUsd: null }, operator).costUsd).toBeCloseTo(1 * 1 + 0.1 * 2, 9);
-    expect(estimatePriceFor({ driverKind: "grok", model: "grok-4.7" }, operator)).toEqual({ inputPerMillion: 3, outputPerMillion: 3 });
+    expect(estimatePriceFor({ driverKind: "openai-compat", model: "grok-4.7" }, operator)).toEqual({ inputPerMillion: 3, outputPerMillion: 3 });
     // a listed model keeps its list price over the operator's catch-all
     expect(estimatePriceFor({ driverKind: "codex", model: "gpt-5.4" }, operator)?.inputPerMillion).toBe(2.5);
     // an unlisted one falls to it
@@ -76,7 +76,7 @@ describe("what the ledger books for a settled turn", () => {
   });
 
   it("books an unpriced model as unpriced, not as free", () => {
-    expect(ledgerCost({ driverKind: "grokAgent", model: "fake-model", input: 5000, output: 100, costUsd: null }, null)).toEqual({ costUsd: null });
+    expect(ledgerCost({ driverKind: "kimiAgent", model: "fake-model", input: 5000, output: 100, costUsd: null }, null)).toEqual({ costUsd: null });
     expect(ledgerCost({ driverKind: "codex", model: "gpt-5.3-codex-spark", input: 5000, output: 100, costUsd: undefined }, { "claude-sonnet-5": { inputPerMillion: 1, outputPerMillion: 1 } })).toEqual({ costUsd: null });
   });
 });

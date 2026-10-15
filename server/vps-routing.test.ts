@@ -226,12 +226,12 @@ createServer(socket => socket.end()).listen(port, '127.0.0.1');
       JSON.stringify({
         instances: {
           vps: {
-            driver: "grokAgent",
+            driver: "kimiAgent",
             environment: { FAKE_ACP_MODE: "echo-gated", FAKE_ACP_GATE_FILE: gateFile, FAKE_ACP_DUMP: acpDump },
             config: { cli: FAKE_CLI, fullAuto: true },
           },
           asker: {
-            driver: "grokAgent",
+            driver: "kimiAgent",
             environment: { FAKE_ACP_MODE: "echo-gated", FAKE_ACP_GATE_FILE: askerGate, FAKE_ACP_DUMP: askerDump },
             config: { cli: FAKE_CLI, fullAuto: true },
           },

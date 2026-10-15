@@ -655,7 +655,7 @@ describe("workspace", () => {
 
   it("API drivers retain supplied memory without inventing filesystem tools", () => {
     writeMemoryFile(BOT, "# Memory\n- The user prefers CSV exports.\n");
-    for (const driver of ["grok", "openai-compat", "minimax"]) {
+    for (const driver of ["openai-compat", "kimiAgent", "customAcp"]) {
       expect(supportsWorkspaceFiles(driver)).toBe(false);
       const prompt = memorySystemPrompt(BOT, { fileTools: supportsWorkspaceFiles(driver) });
       expect(prompt).toContain("The user prefers CSV exports.");

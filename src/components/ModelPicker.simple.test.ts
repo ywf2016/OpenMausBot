@@ -86,12 +86,12 @@ const engine = (instanceId: string, driverKind: string, displayName: string, acc
   models: { default: options.find((option) => !option.custom)?.id ?? "", options },
 });
 const codex = engine("codex", "codex", "Codex", "subscription", [{ id: "gpt-5.6", label: "GPT-5.6" }]);
-const grok = engine("grok", "grokAgent", "Grok", "subscription", [{ id: "grok-5", label: "Grok 5" }]);
+const kimi = engine("kimi", "kimiAgent", "Kimi", "subscription", [{ id: "kimi-k2", label: "Kimi K2" }]);
 const cursor = engine("cursor", "cursorAgent", "Cursor", "subscription", [{ id: "auto", label: "Auto" }]);
 const openaiKey = engine("openai", "openai-compat", "OpenAI", "api", [{ id: "gpt-5.6", label: "GPT-5.6" }]);
 const claudeKey = engine("claudeApi", "claudeAgent", "Claude (API key)", "api", claudeModels);
 /** A local engine: Llama and Gemma are loaded in memory right now. */
-const local = engine("pi", "piAgent", "pi", "custom", [
+const local = engine("local", "customAcp", "Local", "custom", [
   { id: "qwen", label: "Qwen 3", custom: true },
   { id: "mistral", label: "Mistral Small", custom: true },
   { id: "phi", label: "Phi 4", custom: true },
@@ -205,12 +205,12 @@ describe("the model picker in Simple mode", () => {
   });
 
   it("lists every provider it knows: sign-ins, then API keys, then local engines", () => {
-    fixture.instances = [claude(), codex, grok, cursor, openaiKey, claudeKey, local];
+    fixture.instances = [claude(), codex, kimi, cursor, openaiKey, claudeKey, local];
     const opened = open(bot());
     expect(pane(opened)!.props.providers.map((provider) => provider.label))
-      .toEqual(["Claude", "OpenAI", "Grok", "Cursor", "OpenAI", "Claude (API key)", "pi"]);
+      .toEqual(["Claude", "OpenAI", "Kimi", "Cursor", "OpenAI", "Claude (API key)", "Local"]);
     const column = region(menu(opened.html), "data-simple-providers", "data-simple-models");
-    for (const name of ["Claude", "OpenAI", "Grok", "Cursor", "pi"]) expect(column).toContain(`>${name}</span>`);
+    for (const name of ["Claude", "OpenAI", "Kimi", "Cursor", "Local"]) expect(column).toContain(`>${name}</span>`);
     expect(column.match(/data-simple-key/g)).toHaveLength(2);
     // The key on the mark says "API key", so the name does not say it again.
     expect(column).not.toContain("(API key)");
@@ -226,7 +226,7 @@ describe("the model picker in Simple mode", () => {
     expect(hasKey("claudeApi")).toBe(true);
     expect(byId("codex").props["aria-label"]).toBeUndefined();
     expect(hasKey("codex")).toBe(false);
-    expect(hasKey("pi")).toBe(false);
+    expect(hasKey("local")).toBe(false);
   });
 
   it("puts the key on the provider mark, so the name keeps the row's width", () => {
@@ -241,7 +241,7 @@ describe("the model picker in Simple mode", () => {
   });
 
   it("has no More row: there is nothing past the providers and models", () => {
-    fixture.instances = [claude(), codex, grok, cursor, openaiKey, local];
+    fixture.instances = [claude(), codex, kimi, cursor, openaiKey, local];
     const opened = open(bot());
     const html = menu(opened.html);
     expect(html).not.toContain("data-simple-model-more");
@@ -349,7 +349,7 @@ describe("the model picker in Simple mode", () => {
     expect(labels(render(forBot))).toEqual(["Llama 4", "Gemma 4", "Qwen 3", "Mistral Small", "Phi 4", "DeepSeek R2", "Granite 4"]);
     pane(render(forBot))!.props.onPick("granite");
     expect(fixture.dispatch).toHaveBeenLastCalledWith(expect.objectContaining({
-      type: "setModel", selection: expect.objectContaining({ instanceId: "pi", model: "granite" }),
+      type: "setModel", selection: expect.objectContaining({ instanceId: "local", model: "granite" }),
     }));
   });
 
@@ -373,7 +373,7 @@ describe("the model picker in Simple mode", () => {
 
   it("keeps a signed-out engine's local list when its row is clicked again, with a way to sign in", () => {
     const signedOut = claude(false, [...claudeModels, { id: "ollama::qwen3", label: "qwen3 (Ollama)", custom: true }]);
-    fixture.instances = [signedOut, grok];
+    fixture.instances = [signedOut, kimi];
     const forBot = bot(undefined, "claude", "ollama::qwen3");
     const opened = open(forBot);
     expect(pane(opened)!.props.signIn).toEqual({ name: "Claude" });
@@ -384,7 +384,7 @@ describe("the model picker in Simple mode", () => {
     const again = render(forBot);
     expect(pane(again)!.props.needsSetup).toBeNull();
     expect(labels(again)).toEqual(["qwen3 (Ollama)"]);
-    pane(again)!.props.onProvider(grok);
+    pane(again)!.props.onProvider(kimi);
     pane(render(forBot))!.props.onProvider(signedOut);
     const back = render(forBot);
     expect(pane(back)!.props.needsSetup).toBeNull();
@@ -618,7 +618,7 @@ describe("the model picker in Simple mode", () => {
   });
 
   it("shows no account select for a provider with one account", () => {
-    fixture.instances = [claude(), codex, grok];
+    fixture.instances = [claude(), codex, kimi];
     const opened = open(bot());
     expect(pane(opened)!.props.account).toBeUndefined();
     expect(menu(opened.html)).not.toContain("data-simple-account");
@@ -694,7 +694,7 @@ describe("the model picker in Simple mode", () => {
   });
 
   it("tells same-named models apart by their route, even with a twin behind Show all", () => {
-    fixture.instances = [engine("pi", "piAgent", "pi", "custom", [
+    fixture.instances = [engine("local", "customAcp", "Local", "custom", [
       { id: "anthropic/claude-sonnet-4-5", label: "Claude Sonnet 4.5", custom: true, provider: "anthropic" },
       { id: "openai/gpt-5.6", label: "GPT-5.6", custom: true, provider: "openai" },
       { id: "openai/gpt-5.6-mini", label: "GPT-5.6 mini", custom: true, provider: "openai" },
@@ -702,7 +702,7 @@ describe("the model picker in Simple mode", () => {
       { id: "xai/grok-5", label: "Grok 5", custom: true, provider: "xai" },
       { id: "amazon-bedrock/claude-sonnet-4-5", label: "Claude Sonnet 4.5", custom: true, provider: "amazon-bedrock" },
     ])];
-    const forBot = bot(undefined, "pi", "openai/gpt-5.6");
+    const forBot = bot(undefined, "local", "openai/gpt-5.6");
     const row = (rendered: ReturnType<typeof render>, name: string) =>
       inside(rendered).find((node) => node.type === "button" && node.props["aria-label"] === name)!;
     const route = (node: Node) => nodes(node.props.children).find((child) => child.props["data-simple-route"] !== undefined)?.props.children;
@@ -722,7 +722,7 @@ describe("the model picker in Simple mode", () => {
 
   it("looks for local models again when it browses to a provider that runs them or opens its whole list", () => {
     const codexMany = engine("codex", "codex", "Codex", "subscription", many(8));
-    fixture.instances = [claude(true, many(8)), codexMany, grok, local];
+    fixture.instances = [claude(true, many(8)), codexMany, kimi, local];
     const forBot = bot(undefined, "claude", "model-1");
     const opened = open(forBot);
     expect(fixture.refreshModels).not.toHaveBeenCalled();
@@ -730,13 +730,13 @@ describe("the model picker in Simple mode", () => {
     expect(fixture.refreshModels).toHaveBeenLastCalledWith("claude");
 
     // Engines with no local models have none to look for.
-    pane(render(forBot))!.props.onProvider(grok);
+    pane(render(forBot))!.props.onProvider(kimi);
     pane(render(forBot))!.props.onProvider(codexMany);
     pane(render(forBot))!.props.showAll!.onToggle();
     expect(fixture.refreshModels).toHaveBeenCalledTimes(1);
 
     pane(render(forBot))!.props.onProvider(local);
-    expect(fixture.refreshModels).toHaveBeenLastCalledWith("pi");
+    expect(fixture.refreshModels).toHaveBeenLastCalledWith("local");
     expect(fixture.refreshModels).toHaveBeenCalledTimes(2);
   });
 

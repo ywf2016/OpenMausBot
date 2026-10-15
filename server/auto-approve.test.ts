@@ -190,7 +190,7 @@ describe("delegatedApprovalMode", () => {
   const base = { senderIsChief: true, senderMode: "full" as const, sameBot: false, recipientMode: "ask" as const, recipientDriverKind: "claudeAgent" };
   it("passes a Full-access Chief's access to the teammate it delegates to", () => {
     expect(delegatedApprovalMode(base)).toBe("full");
-    for (const recipientDriverKind of ["codex", "claudeAgent", "antigravityAgent", "cursorAgent", "grokAgent", "opencodeGo"]) {
+    for (const recipientDriverKind of ["codex", "claudeAgent", "cursorAgent", "qwenAgent", "opencodeGo"]) {
       expect(delegatedApprovalMode({ ...base, recipientDriverKind })).toBe("full");
     }
   });

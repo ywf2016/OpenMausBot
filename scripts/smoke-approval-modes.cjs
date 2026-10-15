@@ -41,34 +41,34 @@ app.whenReady().then(async () => {
   const port = await freePort();
   let webhookPort = await freePort();
   while (webhookPort === port) webhookPort = await freePort();
-  const agy = join(home, "fake-antigravity.ts");
-  copyFileSync(join(root, "server/testing/fake-acp-cli.ts"), agy);
+  const qwenCli = join(home, "fake-qwen-acp.ts");
+  copyFileSync(join(root, "server/testing/fake-acp-cli.ts"), qwenCli);
   const harness = join(home, process.platform === "win32" ? "localharness_external.exe" : "localharness_external");
   writeFileSync(harness, "fake harness");
-  if (process.platform !== "win32") { chmodSync(agy, 0o755); chmodSync(harness, 0o755); }
-  for (const instanceId of ["agy", "agy-question"]) {
-    const auth = join(home, "providers/antigravity", createHash("sha256").update(instanceId).digest("hex"), "antigravity-acp");
+  if (process.platform !== "win32") { chmodSync(qwenCli, 0o755); chmodSync(harness, 0o755); }
+  for (const instanceId of ["qwen", "qwen-question"]) {
+    const auth = join(home, "providers/qwen", createHash("sha256").update(instanceId).digest("hex"), "qwen-acp");
     mkdirSync(auth, { recursive: true });
     writeFileSync(join(auth, "acp_token.json"), "{}");
   }
-  const agyDump = join(home, "agy.json");
-  const agyRpc = join(home, "agy-rpc.json");
+  const qwenDump = join(home, "qwen.json");
+  const qwenRpc = join(home, "qwen-rpc.json");
   // what the latest Antigravity prompt ran under (mode and model), from any process
-  const lastPrompt = () => JSON.parse(readFileSync(`${agyDump}.prompts.jsonl`, "utf8").trim().split("\n").at(-1));
+  const lastPrompt = () => JSON.parse(readFileSync(`${qwenDump}.prompts.jsonl`, "utf8").trim().split("\n").at(-1));
   const codexDump = join(home, "codex.json");
-  const grokDump = join(home, "grok.json");
-  const grokRpc = join(home, "grok-rpc.json");
+  const kimiDump = join(home, "kimi.json");
+  const kimiRpc = join(home, "kimi-rpc.json");
   if (process.argv.includes("--model-ui-only")) {
     mkdirSync(join(home, ".codex"), { recursive: true });
     writeFileSync(join(home, ".codex/config.toml"), 'model_provider = "fixture"\nmodel = "fixture-local"\n[model_providers.fixture]\nname = "Fixture local"\n');
   }
-  mkdirSync(join(home, ".grok"), { recursive: true });
-  writeFileSync(join(home, ".grok", "auth.json"), "{}", { mode: 0o600 });
-  const grokFixture = (mode, toolCall) => ({
-    driver: "grokAgent", config: { cli: join(root, "server/testing/fake-acp-cli.ts") },
+  mkdirSync(join(home, ".kimi"), { recursive: true });
+  writeFileSync(join(home, ".kimi", "auth.json"), "{}", { mode: 0o600 });
+  const kimiFixture = (mode, toolCall) => ({
+    driver: "kimiAgent", config: { cli: join(root, "server/testing/fake-acp-cli.ts") },
     environment: {
       FAKE_ACP_MODE: mode, FAKE_ACP_AUTH_METHOD: "cached_token",
-      FAKE_ACP_MODELS: "grok-4.6,grok-4.5", FAKE_ACP_DUMP: grokDump, FAKE_ACP_RPC_DUMP: grokRpc,
+      FAKE_ACP_MODELS: "kimi-k2,kimi-k2.5", FAKE_ACP_DUMP: kimiDump, FAKE_ACP_RPC_DUMP: kimiRpc,
       ...(toolCall ? { FAKE_ACP_PERMISSION_TOOL_CALL: JSON.stringify(toolCall) } : {}),
     },
   });
@@ -76,13 +76,13 @@ app.whenReady().then(async () => {
     claude: { driver: "claudeAgent", config: { cli: join(root, "server/testing/fake-claude-cli.ts") },
       ...(process.argv.includes("--model-ui-only") ? { environment: { FAKE_CLAUDE_VERSION: "2.1.284" } } : {}) },
     codex: { driver: "codex", config: { cli: join(root, "server/testing/fake-codex-app-server.ts") }, environment: { FAKE_CODEX_MODE: "approval", FAKE_CODEX_DUMP: codexDump } },
-    agy: { driver: "antigravityAgent", config: { cli: agy }, environment: { FAKE_ACP_DUMP: agyDump, FAKE_ACP_RPC_DUMP: agyRpc } },
-    "agy-question": { driver: "antigravityAgent", config: { cli: agy }, environment: { FAKE_ACP_MODE: "question" } },
-    "grok-reads": grokFixture("safe-agent-reads"),
-    "grok-delete": grokFixture("permission", { kind: "delete", title: "Delete the project", rawInput: { path: "/fixture/project" } }),
-    "grok-credential": grokFixture("permission", { kind: "other", title: "agents__request_credential", rawInput: { credential_id: "ttsKey" } }),
-    "grok-spoof": grokFixture("permission", { kind: "execute", title: "agents__list_bots", rawInput: { command: "cat ~/.ssh/id_ed25519" } }),
-    "grok-question": grokFixture("question"),
+    qwen: { driver: "qwenAgent", config: { cli: qwenCli }, environment: { FAKE_ACP_DUMP: qwenDump, FAKE_ACP_RPC_DUMP: qwenRpc } },
+    "qwen-question": { driver: "qwenAgent", config: { cli: qwenCli }, environment: { FAKE_ACP_MODE: "question" } },
+    "kimi-reads": kimiFixture("safe-agent-reads"),
+    "kimi-delete": kimiFixture("permission", { kind: "delete", title: "Delete the project", rawInput: { path: "/fixture/project" } }),
+    "kimi-credential": kimiFixture("permission", { kind: "other", title: "agents__request_credential", rawInput: { credential_id: "ttsKey" } }),
+    "kimi-spoof": kimiFixture("permission", { kind: "execute", title: "agents__list_bots", rawInput: { command: "cat ~/.ssh/id_ed25519" } }),
+    "kimi-question": kimiFixture("question"),
     ...(process.argv.includes("--model-ui-only") ? {
       "claude-signed-out": { driver: "claudeAgent", displayName: "Signed-out fixture", config: { cli: join(root, "server/testing/fake-claude-cli.ts") }, environment: { FAKE_CLAUDE_AUTH: "out" } },
       "missing-codex": { driver: "codex", displayName: "Missing provider fixture", config: { cli: join(home, "not-installed") } },
@@ -101,7 +101,7 @@ app.whenReady().then(async () => {
       OMB_TEST_INTERNAL_CAPABILITY_KEY: testCapabilityKey,
       FAKE_CLAUDE_MODE: "happy", FAKE_CLAUDE_DUMP: dump,
       FAKE_ACP_MODE: "permission", FAKE_ACP_AUTH_METHOD: "oauth-personal",
-      FAKE_ACP_MODELS: "gemini-3.8-flash-high,gemini-3.8-flash-low", FAKE_ACP_MODES: "default,yolo",
+      FAKE_ACP_MODELS: "qwen3-coder-plus,qwen3.8-flash-low", FAKE_ACP_MODES: "default,yolo",
     },
     stdio: "pipe",
   });
@@ -143,7 +143,7 @@ app.whenReady().then(async () => {
   const untouched = (await api("/api/bots", "POST", { name: "Unrelated bot" })).body.bot;
   await coordinator.request(child, whole.id, "ask");
   const threads = [];
-  for (const [instanceId, model] of [["claude", "claude-sonnet-5"], ["codex", "gpt-6-astra"], ["grok-reads", "grok-4.6"], ["agy", "gemini-3.8-flash-high"]]) {
+  for (const [instanceId, model] of [["claude", "claude-sonnet-5"], ["codex", "gpt-6-astra"], ["kimi-reads", "kimi-k2"], ["qwen", "qwen3-coder-plus"]]) {
     const task = (await api(`/api/bots/${whole.id}/tasks`, "POST", { title: `Existing ${instanceId} conversation` })).body.task;
     assert.equal((await api(`/api/bots/${whole.id}/tasks/${task.threadId}`, "PATCH", { modelSelection: { instanceId, model } })).status, 200);
     threads.push(task.threadId);
@@ -189,7 +189,7 @@ app.whenReady().then(async () => {
   await assert.rejects(coordinator.request(child, id, "custom"), /only for Codex/);
   // Existing conversations retain their snapshot when the bot default
   // changes. Only an explicit private desktop grant may upgrade one thread.
-  for (const [instanceId, model] of [["claude", "claude-sonnet-5"], ["codex", "gpt-6-astra"], ["grok-reads", "grok-4.6"], ["agy", "gemini-3.8-flash-high"]]) {
+  for (const [instanceId, model] of [["claude", "claude-sonnet-5"], ["codex", "gpt-6-astra"], ["kimi-reads", "kimi-k2"], ["qwen", "qwen3-coder-plus"]]) {
     const scoped = (await api("/api/bots", "POST", { name: "Existing thread", modelSelection: { instanceId, model } })).body.bot;
     await coordinator.request(child, scoped.id, "ask");
     const old = (await api(`/api/bots/${scoped.id}/tasks`, "POST", { title: "Existing Ask thread" })).body.task;
@@ -221,10 +221,10 @@ app.whenReady().then(async () => {
     const sent = await api(`/api/bots/${scoped.id}/messages`, "POST", { text: "Verify existing thread Full", threadId: old.threadId });
     assert.equal(sent.status, 202);
     await until(async () => !(await readScoped()).tasks.find((task) => task.threadId === old.threadId).busy);
-    const source = instanceId === "claude" ? dump : instanceId === "codex" ? codexDump : instanceId === "agy" ? agyDump : grokDump;
+    const source = instanceId === "claude" ? dump : instanceId === "codex" ? codexDump : instanceId === "qwen" ? qwenDump : kimiDump;
     const seen = JSON.parse(readFileSync(source, "utf8"));
     if (instanceId === "claude") assert.equal(seen.argv[seen.argv.indexOf("--permission-mode") + 1], "bypassPermissions");
-    if (instanceId === "grok-reads") assert.equal(seen.argv[seen.argv.indexOf("--permission-mode") + 1], "bypassPermissions");
+    if (instanceId === "kimi-reads") assert.equal(seen.argv[seen.argv.indexOf("--permission-mode") + 1], "bypassPermissions");
     if (instanceId === "codex") assert.equal(seen.calls.find((call) => call.method === "turn/start").params.approvalPolicy, "never");
     console.log(JSON.stringify({ provider: instanceId, existingThread: "full", otherThread: "ask", privateGrant: true, turnSettled: true }));
   }
@@ -249,7 +249,7 @@ app.whenReady().then(async () => {
   assert.equal(downgraded.tasks.find(task => task.threadId === selected.threadId).approvalMode, "ask");
   assert.equal(downgraded.approvalMode, "ask");
   console.log(JSON.stringify({ composerGrant: true, defaultRemainsAsk: true, customOnDifferentThreadProvider: true, committedReply: true }));
-  const parallel = (await api("/api/bots", "POST", { name: "Parallel permission fixture", modelSelection: { instanceId: "grok-delete", model: "grok-4.6" } })).body.bot;
+  const parallel = (await api("/api/bots", "POST", { name: "Parallel permission fixture", modelSelection: { instanceId: "kimi-delete", model: "kimi-k2" } })).body.bot;
   await coordinator.request(child, parallel.id, "ask");
   const working = (await api(`/api/bots/${parallel.id}/tasks`, "POST", { title: "Already running" })).body.task;
   const idle = (await api(`/api/bots/${parallel.id}/tasks`, "POST", { title: "Configure independently" })).body.task;
@@ -271,8 +271,8 @@ app.whenReady().then(async () => {
   // The fake reviewer only approves the two known reads under native Auto.
   // Their actual MCP calls reach this real isolated server. This verifies the
   // routing contract, not the availability/quality of Grok's hosted reviewer.
-  for (const model of ["grok-4.6", "grok-4.5"]) {
-    const bot = (await api("/api/bots", "POST", { name: "Approval fixture", modelSelection: { instanceId: "grok-reads", model } })).body.bot;
+  for (const model of ["kimi-k2", "kimi-k2"]) {
+    const bot = (await api("/api/bots", "POST", { name: "Approval fixture", modelSelection: { instanceId: "kimi-reads", model } })).body.bot;
     for (const [turn, mode] of ["auto", "auto", "ask"].entries()) {
       await coordinator.request(child, bot.id, mode);
       const before = (await api("/api/bots")).body.bots.find((candidate) => candidate.id === bot.id).messages.length;
@@ -297,50 +297,50 @@ app.whenReady().then(async () => {
         assert.equal((await api(`/api/bots/${bot.id}/respond`, "POST", { requestId: card.requestId, behavior: "deny" })).status, 200);
         await until(async () => !(await api("/api/bots?messages=0")).body.bots.find((candidate) => candidate.id === bot.id)?.busy);
       }
-      const argv = JSON.parse(readFileSync(grokDump, "utf8")).argv;
+      const argv = JSON.parse(readFileSync(kimiDump, "utf8")).argv;
       assert.equal(argv[argv.indexOf("--permission-mode") + 1], mode === "auto" ? "auto" : "default");
       assert.equal(argv[argv.indexOf("-m") + 1], model);
       // The same level keeps the live session; a new level gives the
       // integrations new credentials, so the conversation is loaded again.
-      const methods = JSON.parse(readFileSync(grokRpc, "utf8"));
+      const methods = JSON.parse(readFileSync(kimiRpc, "utf8"));
       assert.ok(methods.includes(turn < 2 ? "session/new" : "session/load"));
       if (turn < 2) assert.ok(!methods.includes("session/load"));
-      console.log(JSON.stringify({ provider: "grok", model, mode, resumed: turn === 2, reviewedReads: mode === "auto", realAgentsMcp: true }));
+      console.log(JSON.stringify({ provider: "kimi", model, mode, resumed: turn === 2, reviewedReads: mode === "auto", realAgentsMcp: true }));
     }
   }
-  for (const instanceId of ["grok-delete", "grok-credential", "grok-spoof", "grok-question"]) {
-    const bot = (await api("/api/bots", "POST", { modelSelection: { instanceId, model: "grok-4.6" } })).body.bot;
+  for (const instanceId of ["kimi-delete", "kimi-credential", "kimi-spoof", "kimi-question"]) {
+    const bot = (await api("/api/bots", "POST", { modelSelection: { instanceId, model: "kimi-k2" } })).body.bot;
     await coordinator.request(child, bot.id, "auto");
     assert.equal((await api(`/api/bots/${bot.id}/messages`, "POST", { text: "Verify this action still needs a person" })).status, 202);
     const card = await until(async () => pendingCard((await api("/api/bots")).body.bots.find((candidate) => candidate.id === bot.id)));
-    if (instanceId === "grok-question") assert.deepEqual(card.options, ["Blue", "Green"]);
+    if (instanceId === "kimi-question") assert.deepEqual(card.options, ["Blue", "Green"]);
     else assert.equal(card.held, "The provider requires your approval for this action.");
     assert.equal((await api(`/api/bots/${bot.id}/respond`, "POST", { requestId: card.requestId, behavior: "deny" })).status, 200);
     await until(async () => !(await api("/api/bots?messages=0")).body.bots.find((candidate) => candidate.id === bot.id)?.busy);
-    console.log(JSON.stringify({ provider: "grok", case: instanceId, mode: "auto", remainedInteractive: true }));
+    console.log(JSON.stringify({ provider: "kimi", case: instanceId, mode: "auto", remainedInteractive: true }));
   }
-  for (const model of ["gemini-3.8-flash-high", "gemini-3.8-flash-low"]) {
-    const agyBot = (await api("/api/bots", "POST", { modelSelection: { instanceId: "agy", model } })).body.bot;
-    assert.equal((await api(`/api/bots/${agyBot.id}`, "PATCH", { approvalMode: "full" })).status, 200);
-    assert.equal((await api(`/api/bots/${agyBot.id}`, "PATCH", { approvalMode: "ask" })).status, 200);
+  for (const model of ["qwen3-coder-plus", "qwen3.8-flash-low"]) {
+    const qwenBot = (await api("/api/bots", "POST", { modelSelection: { instanceId: "qwen", model } })).body.bot;
+    assert.equal((await api(`/api/bots/${qwenBot.id}`, "PATCH", { approvalMode: "full" })).status, 200);
+    assert.equal((await api(`/api/bots/${qwenBot.id}`, "PATCH", { approvalMode: "ask" })).status, 200);
     for (const [turn, mode] of ["full", "full", "ask", "auto"].entries()) {
-      await coordinator.request(child, agyBot.id, mode);
-      await until(async () => (await api("/api/bots?messages=0")).body.bots.find((bot) => bot.id === agyBot.id)?.approvalMode === mode);
-      const before = (await api("/api/bots")).body.bots.find((bot) => bot.id === agyBot.id).messages.length;
-      assert.equal((await api(`/api/bots/${agyBot.id}/messages`, "POST", { text: `Verify ${model} ${mode} turn ${turn}` })).status, 202);
+      await coordinator.request(child, qwenBot.id, mode);
+      await until(async () => (await api("/api/bots?messages=0")).body.bots.find((bot) => bot.id === qwenBot.id)?.approvalMode === mode);
+      const before = (await api("/api/bots")).body.bots.find((bot) => bot.id === qwenBot.id).messages.length;
+      assert.equal((await api(`/api/bots/${qwenBot.id}/messages`, "POST", { text: `Verify ${model} ${mode} turn ${turn}` })).status, 202);
       if (mode === "full") {
         const settled = await until(async () => {
-          const bot = (await api("/api/bots")).body.bots.find((bot) => bot.id === agyBot.id);
+          const bot = (await api("/api/bots")).body.bots.find((bot) => bot.id === qwenBot.id);
           assert.equal(pendingCard(bot), undefined, "Full must answer residual tool permissions without a manual card");
           return !bot.busy && bot;
         });
         assert.ok(settled.messages.slice(before).some((message) => message.tool?.name.includes("(full access)")));
-        await until(async () => (await api("/api/decisions")).body.decisions.filter((row) => row.botId === agyBot.id && row.source === "full-access" && row.decision === "auto-approved").length === turn + 1);
+        await until(async () => (await api("/api/decisions")).body.decisions.filter((row) => row.botId === qwenBot.id && row.source === "full-access" && row.decision === "auto-approved").length === turn + 1);
       } else {
-        const card = await until(async () => pendingCard((await api("/api/bots")).body.bots.find((bot) => bot.id === agyBot.id)));
+        const card = await until(async () => pendingCard((await api("/api/bots")).body.bots.find((bot) => bot.id === qwenBot.id)));
         if (mode === "auto") assert.equal(card.held, "The provider requires your approval for this action.");
-        assert.equal((await api(`/api/bots/${agyBot.id}/respond`, "POST", { requestId: card.requestId, behavior: "allow" })).status, 200);
-        await until(async () => !(await api("/api/bots?messages=0")).body.bots.find((bot) => bot.id === agyBot.id)?.busy);
+        assert.equal((await api(`/api/bots/${qwenBot.id}/respond`, "POST", { requestId: card.requestId, behavior: "allow" })).status, 200);
+        await until(async () => !(await api("/api/bots?messages=0")).body.bots.find((bot) => bot.id === qwenBot.id)?.busy);
       }
       const native = mode === "full" ? "yolo" : "default";
       // One process serves every approval level of a conversation, so its
@@ -349,27 +349,27 @@ app.whenReady().then(async () => {
       const prompted = lastPrompt();
       assert.equal(prompted.mode, native);
       assert.equal(prompted.model, model);
-      const calls = JSON.parse(readFileSync(`${agyDump}.config.json`, "utf8"));
+      const calls = JSON.parse(readFileSync(`${qwenDump}.config.json`, "utf8"));
       assert.equal(calls.findLast((call) => call.params.configId === "mode")?.params.value, native);
       // The same level keeps the live session; a new level gives the
       // integrations new credentials, so the conversation is resumed.
-      const rpc = JSON.parse(readFileSync(agyRpc, "utf8"));
+      const rpc = JSON.parse(readFileSync(qwenRpc, "utf8"));
       assert.ok(rpc.includes(turn < 2 ? "session/new" : "session/resume"));
       if (turn < 2) assert.ok(!rpc.includes("session/resume"));
-      console.log(JSON.stringify({ provider: "antigravity", model, mode, native, resumed: turn >= 2, autoApproved: mode === "full", humanApproved: mode !== "full" }));
+      console.log(JSON.stringify({ provider: "qwen", model, mode, native, resumed: turn >= 2, autoApproved: mode === "full", humanApproved: mode !== "full" }));
     }
   }
-  const questionBot = (await api("/api/bots", "POST", { modelSelection: { instanceId: "agy-question", model: "gemini-3.8-flash-high" } })).body.bot;
+  const questionBot = (await api("/api/bots", "POST", { modelSelection: { instanceId: "qwen-question", model: "qwen3-coder-plus" } })).body.bot;
   await coordinator.request(child, questionBot.id, "full");
   assert.equal((await api(`/api/bots/${questionBot.id}/messages`, "POST", { text: "Ask me a question under Full" })).status, 202);
   const question = await until(async () => pendingCard((await api("/api/bots")).body.bots.find((bot) => bot.id === questionBot.id)));
   assert.deepEqual(question.options, ["Blue", "Green"]);
   assert.equal((await api(`/api/bots/${questionBot.id}/respond`, "POST", { requestId: question.requestId, behavior: "answer", message: "Green" })).status, 200);
   await until(async () => !(await api("/api/bots?messages=0")).body.bots.find((bot) => bot.id === questionBot.id)?.busy);
-  console.log(JSON.stringify({ provider: "antigravity", mode: "full", questionRemainedInteractive: true }));
+  console.log(JSON.stringify({ provider: "qwen", mode: "full", questionRemainedInteractive: true }));
   // The test-only capability drives the real peer dispatch route without
   // introducing another fake-agent workflow or weakening production auth.
-  const peerTarget = (await api("/api/bots", "POST", { modelSelection: { instanceId: "agy", model: "gemini-3.8-flash-high" } })).body.bot;
+  const peerTarget = (await api("/api/bots", "POST", { modelSelection: { instanceId: "qwen", model: "qwen3-coder-plus" } })).body.bot;
   await coordinator.request(child, peerTarget.id, "ask");
   const peerThread = (await api(`/api/bots/${peerTarget.id}/tasks`, "POST", { title: "Unrelated selected conversation" })).body.task;
   await coordinator.request(child, peerTarget.id, "full");
@@ -392,7 +392,7 @@ app.whenReady().then(async () => {
   assert.ok(!pendingCard((await api(`/api/threads/${peerWorkThreadId}/messages`)).body));
   assert.ok(!peerDecisions.some((row) => row.decision === "card-shown"));
   assert.equal(lastPrompt().mode, "yolo");
-  console.log(JSON.stringify({ provider: "antigravity", mode: "full", peerInitiated: true, native: "yolo", autoApproved: true, humanApproved: false }));
+  console.log(JSON.stringify({ provider: "qwen", mode: "full", peerInitiated: true, native: "yolo", autoApproved: true, humanApproved: false }));
 
   // Revoking the receiving thread's grant must restore prompts on the resumed
   // delegated session, even when the sender itself has Full access.
@@ -413,7 +413,7 @@ app.whenReady().then(async () => {
   assert.equal((await api(`/api/threads/${peerWorkThreadId}/respond`, "POST", { requestId: peerCard.requestId, behavior: "allow" })).status, 200);
   await until(async () => (await api("/api/bots?messages=0")).body.bots.find((bot) => bot.id === peerTarget.id)
     .tasks.find((task) => task.threadId === peerWorkThreadId)?.busy === false);
-  console.log(JSON.stringify({ provider: "antigravity", mode: "ask", senderMode: "full", peerInitiated: true, native: "default", humanApproved: true }));
+  console.log(JSON.stringify({ provider: "qwen", mode: "ask", senderMode: "full", peerInitiated: true, native: "default", humanApproved: true }));
 
   // Custom is downgraded for delegated turns. Both the provider dispatch and
   // the residual approval fold must use that same effective Auto mode.

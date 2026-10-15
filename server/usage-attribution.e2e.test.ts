@@ -100,9 +100,9 @@ posixOnly("usage attribution e2e", () => {
             config: { cli: FAKE_CLAUDE, permissionMode: "bypassPermissions" },
           },
           // no live session: a message while busy waits in the server-side queue
-          acp: { driver: "grokAgent", environment: { FAKE_ACP_MODE: "hang" }, config: { cli: FAKE_ACP, fullAuto: true } },
+          acp: { driver: "kimiAgent", environment: { FAKE_ACP_MODE: "hang" }, config: { cli: FAKE_ACP, fullAuto: true } },
           // reports tokens (10 in, 5 out) but no price, like every engine but Claude
-          acpHappy: { driver: "grokAgent", config: { cli: FAKE_ACP, fullAuto: true } },
+          acpHappy: { driver: "kimiAgent", config: { cli: FAKE_ACP, fullAuto: true } },
           codexRace: {
             driver: "codex",
             environment: { FAKE_CODEX_MODE: "question", FAKE_CODEX_ASK_HOLD: "1", FAKE_CODEX_STEER_ERROR_FILE: codexSteerGate },
@@ -145,7 +145,7 @@ posixOnly("usage attribution e2e", () => {
     expect((await api("POST", `/api/bots/${listed.id}/messages`, { text: "priced from the list" })).status).toBe(202);
     await waitFor(() => ledger(listed.id).length === 1, "the listed model's turn to be booked");
     const row = ledger(listed.id)[0];
-    expect(row).toMatchObject({ driverKind: "grokAgent", model: "grok-4.7", input: 10, output: 5, costSource: "estimated" });
+    expect(row).toMatchObject({ driverKind: "kimiAgent", model: "grok-4.7", input: 10, output: 5, costSource: "estimated" });
     // xAI's list price for grok-4.7: $2 in, $6 out per million tokens
     expect(row.costUsd).toBeCloseTo((10 * 2 + 5 * 6) / 1_000_000, 12);
 

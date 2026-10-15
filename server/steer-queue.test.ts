@@ -3,7 +3,7 @@
 // Unit: the steer-queue module against a fake store — queue bookkeeping,
 // the drain-once property, and the joined single-prompt shape.
 //
-// e2e: the real harness server with the grokAgent driver on the fake ACP
+// e2e: the real harness server with the kimiAgent driver on the fake ACP
 // CLI in echo-gated mode, whose turns stay open until a gate file exists —
 // a deterministic busy window. The echo reply carries the FULL prompt
 // (system + turn text), which pins both what a drained turn was sent (the
@@ -831,17 +831,17 @@ describe("steer-queue e2e (fake ACP fleet)", () => {
       JSON.stringify({
         instances: {
           steer: {
-            driver: "grokAgent",
+            driver: "kimiAgent",
             environment: { FAKE_ACP_MODE: "echo-gated", FAKE_ACP_GATE_FILE: drainGate },
             config: { cli: FAKE_CLI, fullAuto: true },
           },
           steerEarly: {
-            driver: "grokAgent",
+            driver: "kimiAgent",
             environment: { FAKE_ACP_MODE: "echo-gated", FAKE_ACP_GATE_FILE: earlyGate },
             config: { cli: FAKE_CLI, fullAuto: true },
           },
           steerReceipt: {
-            driver: "grokAgent",
+            driver: "kimiAgent",
             environment: { FAKE_ACP_MODE: "echo-gated", FAKE_ACP_GATE_FILE: receiptGate },
             config: { cli: FAKE_CLI, fullAuto: true },
           },
@@ -849,7 +849,7 @@ describe("steer-queue e2e (fake ACP fleet)", () => {
           // be in flight — interrupting earlier would be a no-op on a turn
           // the driver has not registered yet
           steerStop: {
-            driver: "grokAgent",
+            driver: "kimiAgent",
             environment: {
               FAKE_ACP_MODE: "echo-gated",
               FAKE_ACP_GATE_FILE: stopGate,
@@ -860,7 +860,7 @@ describe("steer-queue e2e (fake ACP fleet)", () => {
           // a room turn for the group-turn queue test: one gate holds the
           // room's turn open while a 1:1 message arrives
           steerRoom: {
-            driver: "grokAgent",
+            driver: "kimiAgent",
             environment: { FAKE_ACP_MODE: "echo-gated", FAKE_ACP_GATE_FILE: roomGate },
             config: { cli: FAKE_CLI, fullAuto: true },
           },

@@ -34,7 +34,7 @@ function jsonResponse(body: unknown, status = 200): PlanResponse {
 function account(driver: PlanAccount["driver"], extras: Partial<PlanAccount> = {}): PlanAccount {
   return {
     id: driver,
-    name: driver === "claude" ? "Claude" : driver === "codex" ? "Codex" : "Grok",
+    name: driver === "claude" ? "Claude" : "Codex",
     driver,
     environment: {},
     ...extras,
@@ -329,44 +329,6 @@ describe("plan usage fetcher", () => {
     expect(JSON.stringify(report)).not.toContain(SECRET);
   });
 
-  it("reads a Grok login map, skips expired entries, and ignores a settings failure", async () => {
-    const fresh = "grok-fresh-fixture-token";
-    const stale = "grok-stale-fixture-token";
-    const fetchImpl = vi.fn<PlanFetch>(async (url) => {
-      if (url.includes("format=credits")) {
-        return jsonResponse({
-          config: { creditUsagePercent: 8, currentPeriod: { type: "WEEK", end: "2026-10-03T00:00:00.000Z" } },
-        });
-      }
-      if (url.endsWith("/v1/settings")) return jsonResponse("nope", 500);
-      return jsonResponse({ config: { creditUsagePercent: 40, currentPeriod: { type: "MONTH", end: "2026-10-26T00:00:00.000Z" } } });
-    });
-    const report = await fetchPlanUsage([account("grok", { name: "Grok" })], {
-      fetch: fetchImpl,
-      now: () => NOW,
-      credentials: fileCredentialReader({
-        now: () => NOW,
-        env: { HOME: tmpdir(), USERPROFILE: tmpdir() },
-        readText: () => JSON.stringify({
-          old: { key: stale, expires_at: NOW - 60_000 },
-          current: { key: fresh, expires_at: NOW + 60_000 },
-        }),
-      }),
-    });
-    expect(fetchImpl.mock.calls[0]?.[1].headers.Authorization).toBe(`Bearer ${fresh}`);
-    expect(fetchImpl.mock.calls[0]?.[1].headers["X-XAI-Token-Auth"]).toBe("xai-grok-cli");
-    expect(report.providers[0]).toMatchObject({
-      ok: true,
-      error: null,
-      plan: null,
-      fiveHour: { available: false },
-      weekly: { available: true, remainingPercent: 92, usedPercent: 8 },
-    });
-    expect(report.providers[0]?.extra[0]).toMatchObject({ label: "Monthly", remainingPercent: 60 });
-    expect(JSON.stringify(report)).not.toContain(fresh);
-    expect(JSON.stringify(report)).not.toContain(stale);
-  });
-
   it("caches a report for 45 seconds unless refresh is set", async () => {
     const fetchImpl = vi.fn<PlanFetch>(async () => jsonResponse({
       five_hour: { utilization: 25, resets_at: "2026-09-26T12:00:00.000Z" },
@@ -383,20 +345,20 @@ describe("plan usage fetcher", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(3);
   });
 
-  it("does not share the cache when GROK_HOME changes", async () => {
+  it("does not share the cache when the account environment changes", async () => {
     const fetchImpl = vi.fn<PlanFetch>(async () => jsonResponse({
       five_hour: { utilization: 25, resets_at: "2026-09-26T12:00:00.000Z" },
       seven_day: { utilization: 40, resets_at: "2026-10-03T00:00:00.000Z" },
     }));
     const credentials = { read: () => ({ token: SECRET, accountId: null, expired: false }) };
     await loadPlanUsage({
-      accounts: [account("claude", { id: "same", environment: { GROK_HOME: "/tmp/one" } })],
+      accounts: [account("claude", { id: "same", environment: { CLAUDE_CONFIG_DIR: "/tmp/one" } })],
       now: NOW,
       fetch: fetchImpl,
       credentials,
     });
     await loadPlanUsage({
-      accounts: [account("claude", { id: "same", environment: { GROK_HOME: "/tmp/two" } })],
+      accounts: [account("claude", { id: "same", environment: { CLAUDE_CONFIG_DIR: "/tmp/two" } })],
       now: NOW + 1_000,
       fetch: fetchImpl,
       credentials,
@@ -404,17 +366,16 @@ describe("plan usage fetcher", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
-  it("lists configured Claude, Codex, and Grok accounts and skips other engines", () => {
+  it("lists configured Claude and Codex accounts and skips other engines", () => {
     expect(planAccountsFromInstances({
       claude: { driver: "claudeAgent", displayName: "  Personal Claude  ", config: { configDir: "/tmp/claude" } },
       codex: { driver: "codex" },
-      grok: { driver: "grokAgent", environment: { GROK_HOME: "/tmp/grok" } },
+      kimi: { driver: "kimiAgent", environment: { KIMI_HOME: "/tmp/kimi" } },
       cursor: { driver: "cursorAgent", displayName: "Cursor" },
-      api: { driver: "grok", displayName: "Grok API" },
+      api: { driver: "openai-compat", displayName: "OpenAI-compatible" },
     })).toEqual([
       { id: "claude", name: "Personal Claude", driver: "claude", environment: {}, configDir: "/tmp/claude" },
       { id: "codex", name: "Codex", driver: "codex", environment: {} },
-      { id: "grok", name: "Grok", driver: "grok", environment: { GROK_HOME: "/tmp/grok" } },
     ]);
   });
 });

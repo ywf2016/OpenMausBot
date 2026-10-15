@@ -21,7 +21,7 @@ describe("organisation desktop policy overlay", () => {
   it("is inert until an enrolled parent sends a policy", () => {
     const { managed } = overlay(null);
     expect(managed.current()).toBeNull(); expect(managed.summary()).toBeNull();
-    expect(managed.modelRefusal({ driverKind: "grok" }, false)).toBeUndefined();
+    expect(managed.modelRefusal({ driverKind: "openai-compat" }, false)).toBeUndefined();
     expect(managed.computerRefusal("thisComputer")).toBeUndefined();
     expect(managed.remoteAccessRefusal()).toBeUndefined();
     const servers = { anything: { url: "https://example.test/mcp" }, local: {} };
@@ -31,7 +31,7 @@ describe("organisation desktop policy overlay", () => {
 
   it("the default policy restricts nothing", () => {
     const { managed } = overlay(policy());
-    expect(managed.modelRefusal({ driverKind: "grok", displayName: "Grok" }, false)).toBeUndefined();
+    expect(managed.modelRefusal({ driverKind: "openai-compat", displayName: "OpenAI-compatible" }, false)).toBeUndefined();
     for (const kind of ["thisComputer", "localVm", "box", "vps"] as const) expect(managed.computerRefusal(kind)).toBeUndefined();
     expect(managed.mcpRefusal("anything", "https://example.test")).toBeUndefined();
     expect(managed.remoteAccessRefusal()).toBeUndefined();

@@ -57,19 +57,19 @@ describe("assignmentLevel", () => {
       expect(level({ chief: "full", driverKind: "codex" })).toEqual({ level: "full", source: "chief" });
       expect(level({ chief: "auto", driverKind: "codex" })).toEqual({ level: "auto", source: "chief" });
       expect(level({ chief: "edits", driverKind: "codex" })).toEqual({ level: "ask", source: "engine_cap" });
-      // Antigravity: Full and an edits mode, no native reviewer: Auto becomes Edits
-      expect(level({ chief: "full", driverKind: "antigravityAgent" })).toEqual({ level: "full", source: "chief" });
-      expect(level({ chief: "auto", driverKind: "antigravityAgent" })).toEqual({ level: "edits", source: "engine_cap" });
-      expect(level({ chief: "edits", driverKind: "antigravityAgent" })).toEqual({ level: "edits", source: "chief" });
+      // Qwen: Full, a native reviewer and an edits mode: everything passes
+      expect(level({ chief: "full", driverKind: "qwenAgent" })).toEqual({ level: "full", source: "chief" });
+      expect(level({ chief: "auto", driverKind: "qwenAgent" })).toEqual({ level: "auto", source: "chief" });
+      expect(level({ chief: "edits", driverKind: "qwenAgent" })).toEqual({ level: "edits", source: "chief" });
       // OpenCode and the chat family: Full (the harness answers its own gate
       // for the chat family), nothing below it
-      for (const driverKind of ["opencodeGo", "openai-compat", "groq"]) {
+      for (const driverKind of ["opencodeGo", "openai-compat"]) {
         expect(level({ chief: "full", driverKind })).toEqual({ level: "full", source: "chief" });
         expect(level({ chief: "auto", driverKind })).toEqual({ level: "ask", source: "engine_cap" });
         expect(level({ chief: "edits", driverKind })).toEqual({ level: "ask", source: "engine_cap" });
       }
       // engines with no permission mapping at all, and no engine
-      for (const driverKind of ["kimiAgent", "piAgent", undefined]) {
+      for (const driverKind of ["kimiAgent", undefined]) {
         expect(level({ chief: "full", driverKind })).toEqual({ level: "ask", source: "engine_cap" });
         expect(level({ chief: "auto", driverKind })).toEqual({ level: "ask", source: "engine_cap" });
         expect(level({ chief: "edits", driverKind })).toEqual({ level: "ask", source: "engine_cap" });
@@ -77,15 +77,15 @@ describe("assignmentLevel", () => {
     });
 
     it("says engine_cap whenever the cap lowered the inherited level, down to own included", () => {
-      // capped to exactly the bot's own level
-      expect(level({ own: "edits", chief: "auto", driverKind: "antigravityAgent" })).toEqual({ level: "edits", source: "engine_cap" });
+      // capped to exactly the bot's own level (Codex: edits collapses to ask)
+      expect(level({ own: "ask", chief: "edits", driverKind: "codex" })).toEqual({ level: "ask", source: "engine_cap" });
       expect(level({ own: "edits", chief: "full", driverKind: "kimiAgent" })).toEqual({ level: "edits", source: "engine_cap" });
       // capped below the bot's own level: own wins, and the cap is still why
       expect(level({ own: "auto", chief: "full", driverKind: "kimiAgent" })).toEqual({ level: "auto", source: "engine_cap" });
-      // capped, but still above own
-      expect(level({ own: "ask", chief: "auto", driverKind: "antigravityAgent" })).toEqual({ level: "edits", source: "engine_cap" });
+      // capped, but still above own (OpenCode: auto collapses to ask; ask is own)
+      expect(level({ own: "ask", chief: "auto", driverKind: "opencodeGo" })).toEqual({ level: "ask", source: "engine_cap" });
       // not capped: the hand-down as it was
-      expect(level({ own: "auto", chief: "full", driverKind: "antigravityAgent" })).toEqual({ level: "full", source: "chief" });
+      expect(level({ own: "auto", chief: "full", driverKind: "qwenAgent" })).toEqual({ level: "full", source: "chief" });
     });
 
     it("agrees with the capability flags for every engine that has a row", () => {
@@ -112,8 +112,8 @@ describe("assignmentLevel", () => {
   });
 
   it("is pure: the same input gives the same answer and the input is untouched", () => {
-    const frozen = Object.freeze(input({ own: "edits", chief: "full", driverKind: "geminiAgent" }));
+    const frozen = Object.freeze(input({ own: "edits", chief: "full", driverKind: "qwenAgent" }));
     expect(assignmentLevel(frozen)).toEqual(assignmentLevel(frozen));
-    expect(frozen).toEqual(input({ own: "edits", chief: "full", driverKind: "geminiAgent" }));
+    expect(frozen).toEqual(input({ own: "edits", chief: "full", driverKind: "qwenAgent" }));
   });
 });

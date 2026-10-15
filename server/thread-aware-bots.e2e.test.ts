@@ -219,7 +219,7 @@ beforeAll(async () => {
       // stops mid-turn to ask the person a question no rule may answer —
       // the card that has to reach a human even from a peer-opened thread
       curious: {
-        driver: "grokAgent",
+        driver: "kimiAgent",
         displayName: "Curious fixture",
         environment: { FAKE_ACP_MODE: "question" },
         config: { cli: FAKE_ACP, fullAuto: true },

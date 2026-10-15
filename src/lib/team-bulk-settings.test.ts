@@ -29,7 +29,7 @@ const engine = (instanceId: string, driverKind: string, models: string[], extra:
 const instances = [
   engine("claude", "claudeAgent", ["opus", "sonnet"], { capabilities: { effortLevels: ["low", "medium", "high", "max"] } }),
   engine("codex", "codex", ["gpt-5", "gpt-5-mini"], { capabilities: { effortLevels: ["low", "medium", "high", "xhigh"] } }),
-  engine("pi", "pi", ["local"], { capabilities: { modelVariants: true } }),
+  engine("local", "customAcp", ["local"], { capabilities: { modelVariants: true } }),
 ];
 
 const bot = (id: string, fields: Partial<Bot> = {}) => ({
@@ -49,16 +49,15 @@ describe("team-wide settings", () => {
       bot("ask"),
       bot("already", { approvalMode: "full" }),
       bot("busy", { busy: true }),
-      bot("antigravity", { modelSelection: { instanceId: "ag", model: "x" } }),
+      bot("kimi", { modelSelection: { instanceId: "kimi", model: "x" } }),
     ];
-    const plan = planTeamChange(bots, [...instances, engine("ag", "antigravityAgent", ["x"])], { kind: "approval", mode: "full" });
-    expect(plan.map((row) => row.status)).toEqual(["apply", "unchanged", "skip", "apply"]);
+    const plan = planTeamChange(bots, [...instances, engine("kimi", "kimiAgent", ["x"])], { kind: "approval", mode: "full" });
+    expect(plan.map((row) => row.status)).toEqual(["apply", "unchanged", "skip", "skip"]);
     expect(plan[0]).toMatchObject({ patch: { approvalMode: "full", applyToAllThreads: true } });
     expect(plan[2]).toMatchObject({ reason: expect.stringMatching(/busy/) });
-    // Antigravity's picker offers no Auto: the team change says so instead of
+    // Kimi's picker offers no Full: the team change says so instead of
     // writing a level that bot's own panel would never offer.
-    const auto = planTeamChange([bots[3]!], [engine("ag", "antigravityAgent", ["x"])], { kind: "approval", mode: "auto" });
-    expect(auto[0]).toMatchObject({ status: "skip", reason: "Ag does not offer this approval level" });
+    expect(plan[3]).toMatchObject({ status: "skip", reason: "Kimi does not offer this approval level" });
     expect(planTeamChange([bot("codex", { modelSelection: { instanceId: "codex", model: "gpt-5" } })], instances,
       { kind: "approval", mode: "edits" })[0]).toMatchObject({ status: "skip" });
   });
@@ -111,7 +110,7 @@ describe("team-wide settings", () => {
     const bots = [
       bot("claude", { modelSelection: { instanceId: "claude", model: "sonnet", effort: "low" } }),
       bot("codex", { modelSelection: { instanceId: "codex", model: "gpt-5" } }),
-      bot("pi", { modelSelection: { instanceId: "pi", model: "local", variant: "fast" } }),
+      bot("local", { modelSelection: { instanceId: "local", model: "local", variant: "fast" } }),
       bot("gone", { modelSelection: { instanceId: "removed", model: "m" } }),
     ];
     const toOpus = planTeamChange(bots, instances, { kind: "model", model: "opus" });

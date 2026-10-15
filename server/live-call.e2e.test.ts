@@ -121,7 +121,7 @@ posixOnly("Live call e2e", () => {
             config: { cli: FAKE_CLAUDE, permissionMode: "bypassPermissions" },
           },
           // cannot steer and never finishes: a request made while it works waits in the queue
-          acp: { driver: "grokAgent", environment: { FAKE_ACP_MODE: "hang" }, config: { cli: FAKE_ACP, fullAuto: true } },
+          acp: { driver: "kimiAgent", environment: { FAKE_ACP_MODE: "hang" }, config: { cli: FAKE_ACP, fullAuto: true } },
           // parks its turn on a question and can steer, but refuses to while
           // queueSteerGate exists: a request made then waits in the queue until
           // the gate is cleared and Steer is pressed
@@ -131,8 +131,8 @@ posixOnly("Live call e2e", () => {
             config: { cli: FAKE_CODEX },
           },
           // every turn asks permission to run a command
-          asks: { driver: "grokAgent", environment: { FAKE_ACP_MODE: "permission" }, config: { cli: FAKE_ACP, fullAuto: false } },
-          questions: { driver: "grokAgent", environment: { FAKE_ACP_MODE: "question" }, config: { cli: FAKE_ACP, fullAuto: false } },
+          asks: { driver: "kimiAgent", environment: { FAKE_ACP_MODE: "permission" }, config: { cli: FAKE_ACP, fullAuto: false } },
+          questions: { driver: "kimiAgent", environment: { FAKE_ACP_MODE: "question" }, config: { cli: FAKE_ACP, fullAuto: false } },
         },
       }),
     );

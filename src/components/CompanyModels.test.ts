@@ -50,8 +50,8 @@ const personalClaude: InstanceInfo = { instanceId: "claude", driverKind: "claude
   snapshot: { state: "available", authenticated: false }, models: { default: "sonnet", options: [{ id: "sonnet", label: "Sonnet" }] } };
 const personalCodex: InstanceInfo = { instanceId: "codex", driverKind: "codex", displayName: "Codex",
   snapshot: { state: "unavailable", reason: "codex CLI not found" }, models: { default: "gpt", options: [] }, install: { command: { darwin: "npm i -g @openai/codex", linux: "npm i -g @openai/codex", win32: "npm i -g @openai/codex" } } };
-const workingGrok: InstanceInfo = { instanceId: "grok", driverKind: "grokAgent", displayName: "Grok",
-  snapshot: { state: "available", authenticated: true }, models: { default: "grok-4", options: [{ id: "grok-4", label: "Grok 4" }] } };
+const workingKimi: InstanceInfo = { instanceId: "kimi", driverKind: "kimiAgent", displayName: "Kimi",
+  snapshot: { state: "available", authenticated: true }, models: { default: "kimi-k2", options: [{ id: "kimi-k2", label: "Kimi K2" }] } };
 function bot(id: string, name: string, instanceId: string): Bot {
   return { id, threadId: `${id}-thread`, name, title: "", description: "", notifications: true, color: "green", unread: false, messages: [],
     modelSelection: { instanceId, model: "saved-model" } } as unknown as Bot;
@@ -62,8 +62,8 @@ beforeEach(() => {
   fixture.kept = new Set(["b1", "b2", "b3"]);
   fixture.flushBotPatches = vi.fn(async (botId: string) => ({ id: botId,
     modelSelection: fixture.kept.has(botId) ? { instanceId: "company.fixture.anthropic", model: "company-claude" } : { instanceId: "claude", model: "saved-model" } }));
-  fixture.instances = [personalClaude, personalCodex, workingGrok, companyClaude, companyCodex];
-  fixture.bots = [bot("b1", "Scout", "claude"), bot("b2", "Writer", "grok"), bot("b3", "Maus", "removed-instance")];
+  fixture.instances = [personalClaude, personalCodex, workingKimi, companyClaude, companyCodex];
+  fixture.bots = [bot("b1", "Scout", "claude"), bot("b2", "Writer", "kimi"), bot("b3", "Maus", "removed-instance")];
   vi.stubGlobal("window", { ogb: { platform: "darwin" } });
   setLocale("en");
 });

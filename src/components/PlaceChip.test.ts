@@ -20,8 +20,8 @@ vi.mock("@/state/store", async (importOriginal) => {
         config: fixture.config ?? original.initialState.config,
         instances: [{
           instanceId: "test",
-          driverKind: "grokAgent",
-          displayName: "Grok",
+          driverKind: "kimiAgent",
+          displayName: "Kimi",
           snapshot: { state: "available" },
           capabilities: { computerMcp: fixture.computerMcp, browserMcp: true },
         } as InstanceInfo],

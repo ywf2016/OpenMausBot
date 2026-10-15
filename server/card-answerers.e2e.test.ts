@@ -109,7 +109,7 @@ const decision = (requestId: string, kind: DecisionRow["decision"]) => waitFor(a
 async function makeBot(name: string) {
   const created = await api("POST", "/api/bots", { name }, BOSS);
   expect(created.status, JSON.stringify(created.body)).toBe(201);
-  const patched = await api("PATCH", `/api/bots/${created.body.bot.id}`, { modelSelection: { instanceId: "grok", model: "fake-model" } }, BOSS);
+  const patched = await api("PATCH", `/api/bots/${created.body.bot.id}`, { modelSelection: { instanceId: "kimi", model: "fake-model" } }, BOSS);
   expect(patched.status).toBe(200);
   return created.body.bot as { id: string; threadId: string };
 }
@@ -132,7 +132,7 @@ posixOnly("who may answer a card on a shared workspace", () => {
     mkdirSync(data, { recursive: true });
     writeFileSync(join(data, "config.json"), JSON.stringify({
       signIn: { admins: [BOSS], members: [ADA, BOB] },
-      instances: { grok: { driver: "grokAgent", environment: { FAKE_ACP_MODE: "permission" }, config: { cli: FAKE_CLI, fullAuto: false } } },
+      instances: { kimi: { driver: "kimiAgent", environment: { FAKE_ACP_MODE: "permission" }, config: { cli: FAKE_CLI, fullAuto: false } } },
     }));
     const role = (email: string) => (email === BOSS ? ["admin", "client"] as const : ["client"] as const);
     const registry = new SessionRegistry({ file: join(data, "sessions.json"), emailScopes: (email) => [...role(email)] });

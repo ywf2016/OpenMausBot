@@ -326,16 +326,6 @@ describe("the bot settings panel in Simple mode", () => {
     expect(patch).toHaveBeenLastCalledWith({ approvalMode: "ask" });
   });
 
-  it("shows legacy Antigravity Auto as Ask without changing the saved mode", () => {
-    fixture.derived.engine = { ...fixture.derived.engine!, driverKind: "antigravityAgent" };
-    fixture.derived.approvalMode = "auto";
-    const rendered = panel(makeBot({ approvalMode: "auto" }));
-    expect(find(rendered, "data-approval-choice", "ask").props["aria-pressed"]).toBe(true);
-    expect(find(rendered, "data-approval-choice", "auto").props["aria-pressed"]).toBe(false);
-    expect(find(rendered, "data-approval-choice", "auto").props.disabled).toBe(true);
-    expect(patch).not.toHaveBeenCalled();
-  });
-
   it("warns before Decide for me on this computer, as Permissions does", () => {
     const bot = makeBot({ computer: "local" });
     click(find(panel(bot), "data-approval-choice", "auto"));

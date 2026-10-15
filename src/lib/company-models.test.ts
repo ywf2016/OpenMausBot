@@ -12,7 +12,7 @@ const signedOutClaude = instance("claude", "claudeAgent", { state: "available", 
   models: { default: "sonnet", options: [{ id: "sonnet", label: "Sonnet" }, { id: "local/qwen", label: "Qwen", custom: true }] },
 });
 const workingCodex = instance("codex", "codex", { state: "available", authenticated: true });
-const missingCli = instance("grok", "grokAgent", { state: "unavailable", reason: "grok CLI not found" });
+const missingCli = instance("kimi", "kimiAgent", { state: "unavailable", reason: "kimi CLI not found" });
 function bot(id: string, instanceId: string, extra: Partial<Bot> = {}): Bot {
   return { id, threadId: `${id}-thread`, name: id, title: "", description: "", notifications: true, color: "green", unread: false, messages: [],
     modelSelection: { instanceId, model: instanceId === "claude" ? "sonnet" : `${instanceId}-default` }, ...extra } as Bot;
@@ -31,7 +31,7 @@ describe("Company switch planning", () => {
     const instances = [signedOutClaude, workingCodex, missingCli, companyRouter, companyClaude];
     const bots = [
       bot("signed-out", "claude"), bot("working", "codex"), bot("missing", "deleted-instance"), bot("setup", ""),
-      bot("unavailable", "grok"), bot("custom-model", "claude", { modelSelection: { instanceId: "claude", model: "local/qwen" } }),
+      bot("unavailable", "kimi"), bot("custom-model", "claude", { modelSelection: { instanceId: "claude", model: "local/qwen" } }),
       bot("already-company", companyRouter.instanceId), bot("archived", "deleted-instance", { hidden: true }),
     ];
     const plan = planCompanySwitch(bots, instances);

@@ -15,26 +15,12 @@ const bare: EngineCapabilities = { resume: true, nativeReviewer: false, full: fa
 const EXPECTED: Record<string, EngineCapabilities> = {
   claudeAgent: { resume: true, nativeReviewer: true, full: true, edits: true, subagents: false },
   codex: { resume: true, nativeReviewer: true, full: true, edits: false, subagents: false },
-  piAgent: bare,
-  antigravityAgent: { resume: true, nativeReviewer: false, full: true, edits: true, subagents: false },
-  grokAgent: { resume: true, nativeReviewer: true, full: true, edits: true, subagents: false },
-  geminiAgent: { resume: true, nativeReviewer: false, full: true, edits: true, subagents: false },
   kimiAgent: bare,
-  droidAgent: bare,
   cursorAgent: { resume: true, nativeReviewer: true, full: true, edits: false, subagents: false },
-  museCode: { resume: true, nativeReviewer: false, full: true, edits: false, subagents: false },
   opencodeGo: { resume: true, nativeReviewer: false, full: true, edits: false, subagents: false },
   qwenAgent: { resume: true, nativeReviewer: true, full: true, edits: true, subagents: false },
-  hermesAgent: bare,
-  clineAgent: { resume: true, nativeReviewer: false, full: true, edits: false, subagents: false },
   customAcp: bare,
   "openai-compat": chat,
-  grok: chat,
-  minimax: chat,
-  mistral: chat,
-  cerebras: chat,
-  groq: chat,
-  meta: chat,
 };
 
 describe("engineCapabilities", () => {

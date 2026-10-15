@@ -131,7 +131,7 @@ const ids = { pub: "", pubThread: "", hr: "", hrThread: "", board: "", roomPub: 
 async function makeBot(name: string, section?: string) {
   const created = await api("POST", "/api/bots", { name, ...(section ? { section } : {}) }, BOSS);
   expect(created.status, JSON.stringify(created.body)).toBe(201);
-  const patched = await api("PATCH", `/api/bots/${created.body.bot.id}`, { modelSelection: { instanceId: "grok", model: "fake-model" } }, BOSS);
+  const patched = await api("PATCH", `/api/bots/${created.body.bot.id}`, { modelSelection: { instanceId: "kimi", model: "fake-model" } }, BOSS);
   expect(patched.status).toBe(200);
   return created.body.bot as { id: string; threadId: string };
 }
@@ -159,9 +159,9 @@ posixOnly("per-bot visibility on a shared workspace", () => {
     writeFileSync(join(data, "config.json"), JSON.stringify({
       signIn: { admins: [BOSS], members: [ADA, BOB] },
       instances: {
-        grok: { driver: "grokAgent", config: { cli: FAKE_CLI, fullAuto: false } },
+        kimi: { driver: "kimiAgent", config: { cli: FAKE_CLI, fullAuto: false } },
         // repeats its whole prompt back, so a test can read what a bot was told
-        grokecho: { driver: "grokAgent", environment: { FAKE_ACP_MODE: "echo-gated" }, config: { cli: FAKE_CLI, fullAuto: false } },
+        kimiecho: { driver: "kimiAgent", environment: { FAKE_ACP_MODE: "echo-gated" }, config: { cli: FAKE_CLI, fullAuto: false } },
       },
     }));
     const role = (email: string) => (email === BOSS ? ["admin", "client"] as const : ["client"] as const);
@@ -491,7 +491,7 @@ posixOnly("per-bot visibility on a shared workspace", () => {
     // Bob asks the helpdesk; its brief of recent work must not name the room
     // it shares with Payroll, nor what was said there. (An engine that
     // repeats its prompt shows exactly what the helpdesk was told.)
-    expect((await api("PATCH", `/api/bots/${ids.pub}`, { modelSelection: { instanceId: "grokecho", model: "fake-model" } }, BOSS)).status).toBe(200);
+    expect((await api("PATCH", `/api/bots/${ids.pub}`, { modelSelection: { instanceId: "kimiecho", model: "fake-model" } }, BOSS)).status).toBe(200);
     const sent = await api("POST", `/api/bots/${ids.pub}/messages`, { text: "What have you been up to?", threadId: ids.pubThread }, BOB);
     expect(sent.status, JSON.stringify(sent.body)).toBe(202);
     const reply = await settledReply(ids.pubThread, "What have you been up to?");
@@ -500,7 +500,7 @@ posixOnly("per-bot visibility on a shared workspace", () => {
     expect(answer).toContain("echo: ");
     expect(answer).not.toContain("Pay questions");
     expect(answer).not.toContain("SECRET-ROOM-42");
-    expect((await api("PATCH", `/api/bots/${ids.pub}`, { modelSelection: { instanceId: "grok", model: "fake-model" } }, BOSS)).status).toBe(200);
+    expect((await api("PATCH", `/api/bots/${ids.pub}`, { modelSelection: { instanceId: "kimi", model: "fake-model" } }, BOSS)).status).toBe(200);
     // Its session_search does not reach that room either.
     const minted = await fetch(`${BASE}/api/testing/internal-capability`, {
       method: "POST", headers: { "content-type": "application/json", "x-openmausbot-test-capability": CAPABILITY_KEY },
@@ -588,11 +588,11 @@ posixOnly("per-bot visibility on a shared workspace", () => {
         body: JSON.stringify({ botId: ids.board, threadId: boardThread }),
       });
       const { token } = await minted.json() as { token: string };
-      const engine = (await api("GET", "/api/instances", undefined, BOSS)).body.instances.find((instance: any) => instance.instanceId === "grok");
+      const engine = (await api("GET", "/api/instances", undefined, BOSS)).body.instances.find((instance: any) => instance.instanceId === "kimi");
       const created = await fetch(`${BASE}/api/internal/create-bot`, {
         method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
         body: JSON.stringify({ name: "Layoff Modeler", role: "Models RIF scenarios", instructions: "SECRET-INSTR model the reduction",
-          modelSelection: { instanceId: "grok", model: engine.models.default } }),
+          modelSelection: { instanceId: "kimi", model: engine.models.default } }),
       });
       const card = await created.json() as { requestId: string; state: string };
       expect(created.status, JSON.stringify(card)).toBe(201);

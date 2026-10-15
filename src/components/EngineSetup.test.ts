@@ -44,48 +44,6 @@ describe("needsCli / needsSignIn", () => {
   });
 });
 
-describe("managed engine setup errors", () => {
-  function managed(snapshot: InstanceInfo["snapshot"]): InstanceInfo {
-    return {
-      ...instance(snapshot),
-      instanceId: "antigravity",
-      driverKind: "antigravityAgent",
-      displayName: "Antigravity",
-      install: { managed: { label: "Install official Antigravity", downloadBytes: 1024 } },
-    };
-  }
-
-  function render(engine: InstanceInfo): string {
-    vi.stubGlobal("window", { ogb: { platform: "darwin" } });
-    return renderToStaticMarkup(createElement(StoreProvider, null, createElement(EngineSetup, { instance: engine })));
-  }
-
-  it("shows profile failures without claiming the runtime is missing", () => {
-    const reason = "Cannot write Antigravity profile settings (EACCES).";
-    const engine = managed({ state: "unavailable", reason });
-    const markup = render(engine);
-    expect(markup).toContain(reason);
-    expect(markup).toContain('role="alert"');
-    expect(markup).toContain("Install official Antigravity");
-    expect(engineStatus(engine)).toBe("Setup required");
-    expect(markup).not.toMatch(/CLI not found|Not installed/);
-  });
-
-  it("renders an initialization failure reported by the snapshot", () => {
-    const engine = managed({ state: "unavailable", reason: "initialize timed out." });
-    expect(render(engine)).toContain("initialize timed out.");
-    expect(engineStatus(engine)).toBe("Setup required");
-  });
-
-  it("preserves the installed engine's sign-in flow", () => {
-    const engine = managed({ state: "available", authenticated: false, version: "1.1.1" });
-    const markup = render(engine);
-    expect(engineStatus(engine)).toBe("Sign-in required");
-    expect(markup).toContain("Sign in with Google");
-    expect(markup).not.toContain("Install official Antigravity");
-  });
-});
-
 describe("engines set up with a key in Settings", () => {
   it("opens Settings → API keys instead of offering a terminal command", () => {
     vi.stubGlobal("window", { ogb: { platform: "darwin" } });
@@ -215,7 +173,7 @@ describe("server device-code sign-in", () => {
 
 describe("API-key engine setup", () => {
   function keyEngine(driverKind: string, snapshot: InstanceInfo["snapshot"]): InstanceInfo {
-    return { ...instance(snapshot), instanceId: driverKind, driverKind, displayName: "Grok (API)", access: "api", install: { docsUrl: "https://console.x.ai" } };
+    return { ...instance(snapshot), instanceId: driverKind, driverKind, displayName: "OpenAI", access: "api", install: { docsUrl: "https://platform.openai.com/api-keys", settings: "connections" } };
   }
   const render = (engine: InstanceInfo, ogb: Record<string, unknown> = { platform: "darwin" }) => {
     vi.stubGlobal("window", { ogb });
@@ -223,19 +181,19 @@ describe("API-key engine setup", () => {
   };
 
   it("sends a missing key to Settings → API keys, not to a config file", () => {
-    const html = render(keyEngine("grok", { state: "unavailable", reason: "No xAI API key — open Settings → API keys." }));
+    const html = render(keyEngine("openai-compat", { state: "unavailable", reason: "No API key — open Settings → API keys." }));
     expect(html).toContain("data-engine-setup-api-key");
-    expect(html).toContain("Grok (API) needs an API key");
+    expect(html).toContain("OpenAI needs an API key");
     expect(html).toContain("Open API keys");
     expect(html).not.toContain("config.json");
   });
 
   it("says so when the provider rejected the saved key", () => {
-    const html = render(keyEngine("grok", { state: "available", authenticated: false, reason: "The provider rejected this key." }));
+    const html = render(keyEngine("openai-compat", { state: "available", authenticated: false, reason: "The provider rejected this key." }));
     expect(html).toContain("data-engine-setup-api-key");
     expect(html).toContain("The provider rejected the saved key.");
     expect(html).toContain("Open API keys");
-    expect(render(keyEngine("grok", { state: "unavailable" }))).not.toContain("rejected");
+    expect(render(keyEngine("openai-compat", { state: "unavailable" }))).not.toContain("rejected");
   });
 
   it("has no button on a remote client, whose settings hide the keys", () => {

@@ -42,7 +42,7 @@ const choose = (id: string) => {
 };
 
 const engine = (instanceId: string, driverKind: string, method: "paste-code" | "device-code", extra: Partial<InstanceInfo> = {}): InstanceInfo => ({
-  instanceId, driverKind, displayName: driverKind === "codex" ? "Codex" : driverKind === "grokAgent" ? "Grok" : "Claude", access: "subscription",
+  instanceId, driverKind, displayName: driverKind === "codex" ? "Codex" : "Claude", access: "subscription",
   snapshot: { state: "available", authenticated: false }, models: { default: "", options: [] }, authentication: { method },
   ...extra,
 } as InstanceInfo);
@@ -93,25 +93,4 @@ it("picks the person's own engine, never a local-model or read-only one, and say
   store.instances = [codex];
   choose("claude");
   expect(render().html).toContain("not available on My Cloud yet");
-});
-
-it("offers Grok as a third choice when this Cloud computer has the Grok CLI, and opens its code sign-in", () => {
-  const grok = engine("grok", "grokAgent", "device-code");
-  store.instances = [claude, codex, grok];
-  const { html } = render();
-  for (const label of ["Claude", "ChatGPT", "Grok", "Use your grok.com subscription with Grok Build.", "Use an API key"]) expect(html).toContain(label);
-  // The third tile, after ChatGPT and before the API key, in a row of three.
-  expect(html.indexOf('data-cloud-choice="grok"')).toBeGreaterThan(html.indexOf('data-cloud-choice="codex"'));
-  expect(html.indexOf('data-cloud-choice="grok"')).toBeLessThan(html.indexOf('data-cloud-choice="api-key"'));
-  expect(html).toContain("grid-cols-3");
-  choose("grok");
-  expect(render().html).toContain('data-engine-setup="grok"');
-});
-
-it("leaves Grok out where this Cloud computer has no Grok CLI (an older image)", () => {
-  store.instances = [claude, codex, engine("grok", "grokAgent", "device-code", { snapshot: { state: "unavailable", reason: "`grok` CLI not found" } })];
-  const { html } = render();
-  expect(html).not.toContain('data-cloud-choice="grok"');
-  expect(html).toContain("grid-cols-2");
-  expect(html).toContain("Use an API key");
 });

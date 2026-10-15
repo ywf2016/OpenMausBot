@@ -1238,7 +1238,7 @@ describe("§3 one level rule", () => {
     const capped = ok(enqueueFrom(w, root, workFor("qa", "Test", { levels: { own: "ask", chief: "full" }, driverKind: "unknownAgent" })));
     expect(capped.level).toBe("ask");
     expect(capped.levelSource).toBe("engine_cap");
-    const edits = ok(enqueueFrom(w, root, workFor("ops", "Deploy", { levels: { own: "ask", chief: "auto" }, driverKind: "geminiAgent" })));
+    const edits = ok(enqueueFrom(w, root, workFor("ops", "Deploy", { levels: { own: "ask", chief: "auto" }, driverKind: "qwenAgent" })));
     expect(edits.level).toBe("edits");
     expect(edits.levelSource).toBe("engine_cap");
     const ownWins = ok(enqueueFrom(w, root, workFor("dev", "Lint", { levels: { own: "full", chief: "edits" }, driverKind: "claudeAgent" })));

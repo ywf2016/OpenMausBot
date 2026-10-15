@@ -117,7 +117,7 @@ await import(${JSON.stringify(pathToFileURL(join(SERVER_DIR, "testing", "fake-cl
     claude: { driver: "claudeAgent", displayName: "Claude", config: { cli } },
     // A model that uses the Mac, asks a question, and uses it again once the
     // card is answered (fake-acp-cli.ts "lend-question").
-    grok: { driver: "grokAgent", environment: { FAKE_ACP_MODE: "lend-question" }, config: { cli: join(SERVER_DIR, "testing", "fake-acp-cli.ts"), fullAuto: false } },
+    kimi: { driver: "kimiAgent", environment: { FAKE_ACP_MODE: "lend-question" }, config: { cli: join(SERVER_DIR, "testing", "fake-acp-cli.ts"), fullAuto: false } },
   } }));
   chmodSync(join(SERVER_DIR, "testing", "fake-acp-cli.ts"), 0o755);
   port = await freePortBlock([0, 1]);
@@ -215,7 +215,7 @@ it("the person's Mac, lent through the real connector, is usable by the owner's 
     expect((await api("POST", `/api/routines/${routineId}/run`, { token: owner })).status).toBe(201);
   });
   const newAcpBot = async (name: string) => {
-    const created = (await api("POST", "/api/bots", { token: owner, body: { name, modelSelection: { instanceId: "grok", model: "fake-model" } } })).body.bot;
+    const created = (await api("POST", "/api/bots", { token: owner, body: { name, modelSelection: { instanceId: "kimi", model: "fake-model" } } })).body.bot;
     return { id: created.id as string, threadId: created.threadId as string };
   };
   const bot = await newBot("Cloud bot");

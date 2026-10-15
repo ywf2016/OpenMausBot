@@ -25,8 +25,8 @@ const claude = {
 
 describe("new bot default model selection", () => {
   it("accepts a configured API-key provider", () => {
-    const instance = { ...codex, instanceId: "mistral", driverKind: "mistral", access: "api" as const };
-    const preferred = { instanceId: "mistral", model: "selected-model" };
+    const instance = { ...codex, instanceId: "openaiCompat", driverKind: "openai-compat", access: "api" as const };
+    const preferred = { instanceId: "openaiCompat", model: "selected-model" };
     expect(selectDefaultModelSelection([instance], preferred)).toEqual(preferred);
   });
   it("keeps a saved custom endpoint even when its account sign-in is false", () => {

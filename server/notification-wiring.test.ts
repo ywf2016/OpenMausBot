@@ -60,8 +60,8 @@ posixOnly("routine failure notification wiring", () => {
       join(home, ".openmausbot", "config.json"),
       JSON.stringify({
         instances: {
-          grok: {
-            driver: "grokAgent",
+          kimi: {
+            driver: "kimiAgent",
             // fail-after-text streams a partial answer before failing: with a
             // NON-empty reply, only the routine-failed/done dedup suppresses
             // the generic done — exit-early would pass on the empty-reply
@@ -117,7 +117,7 @@ posixOnly("routine failure notification wiring", () => {
           await api("PATCH", `/api/bots/${bot.id}`, {
             name: "Routine Scout",
             notifications: true,
-            modelSelection: { instanceId: "grok", model: "fake-model" },
+            modelSelection: { instanceId: "kimi", model: "fake-model" },
           })
         ).status,
       ).toBe(200);

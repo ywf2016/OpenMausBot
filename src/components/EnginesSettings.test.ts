@@ -65,36 +65,6 @@ describe("Settings → Engines → Codex", () => {
   });
 });
 
-describe("Settings → Engines → Grok", () => {
-  function renderGrok(authenticated: boolean): string {
-    vi.stubGlobal("window", {});
-    vi.stubGlobal("navigator", { userAgent: "Linux" });
-    fixture.instances = [{
-      instanceId: "grok", driverKind: "grokAgent", displayName: "Grok", cliDefault: "grok",
-      snapshot: { state: "available", authenticated, version: "grok 1.0.41" },
-      models: { default: "grok-4.7", options: [] },
-      authentication: { method: "device-code", signOut: false },
-      install: { command: { linux: "curl -fsSL https://x.ai/cli/install.sh | bash" }, signInCommand: "grok login" },
-    }];
-    fixture.bots = [];
-    return renderToStaticMarkup(createElement(EnginesSettings));
-  }
-
-  it("signs in from Settings with a code, never ChatGPT's card", () => {
-    const html = renderGrok(false);
-    expect(html).toContain('data-device-sign-in="grok"');
-    expect(html).toContain("Sign in to Grok");
-    expect(html).not.toContain("ChatGPT");
-  });
-
-  it("says Grok is connected once it is, in Grok's words", () => {
-    const html = renderGrok(true);
-    expect(html).toContain("Grok connected on this server");
-    expect(html).not.toContain("ChatGPT");
-    expect(html).not.toContain("Sign in to Grok");
-  });
-});
-
 describe("Settings → Engines → setup cards", () => {
   it.each([true, false])("keeps account creation inside its provider card (authenticated: %s)", (authenticated) => {
     vi.stubGlobal("window", {});
@@ -111,7 +81,6 @@ describe("Settings → Engines → setup cards", () => {
     for (const [instance, label, other] of [
       [claude, "Add Claude account", "Add ChatGPT account"],
       [chatgpt, "Add ChatGPT account", "Add Claude account"],
-      [{ instanceId: "antigravity", driverKind: "antigravityAgent", displayName: "Antigravity", cliDefault: "agy_acp_server", snapshot: { state: "available", authenticated }, models: { default: "gemini", options: [] } } as InstanceInfo, "Add Google account", "Add ChatGPT account"],
     ] as const) {
       fixture.instances = [instance];
       const html = renderToStaticMarkup(createElement(EnginesSettings));
@@ -131,10 +100,10 @@ describe("Settings → Engines → setup cards", () => {
     expect(unsupported).not.toContain("Add ChatGPT account");
   });
 
-  it("shows the actual Google account email with an honest fallback", () => {
+  it("shows the actual account email with an honest fallback", () => {
     vi.stubGlobal("window", {});
     fixture.bots = [];
-    const instance: InstanceInfo = { instanceId: "google-work", driverKind: "antigravityAgent", displayName: "Work", cliDefault: "agy_acp_server", snapshot: { state: "available", authenticated: true, account: { email: "work@example.test" } }, models: { default: "gemini", options: [] } };
+    const instance: InstanceInfo = { instanceId: "claude-work", driverKind: "claudeAgent", displayName: "Work", cliDefault: "claude", snapshot: { state: "available", authenticated: true, account: { email: "work@example.test" } }, models: { default: "sonnet", options: [] } };
     fixture.instances = [instance];
     expect(renderToStaticMarkup(createElement(EnginesSettings))).toContain("work@example.test");
     delete instance.snapshot.account;
@@ -200,23 +169,6 @@ describe("Settings → Engines → setup cards", () => {
     expect(html).not.toContain("data-engine-update-notice");
     delete fixture.instances[0].snapshot.warning;
     expect(renderToStaticMarkup(createElement(EnginesSettings))).not.toContain("data-engine-warning-notice");
-  });
-
-  it("exposes managed Antigravity setup and keeps custom engines free of cloud sign-in", () => {
-    vi.stubGlobal("window", {});
-    vi.stubGlobal("navigator", { userAgent: "Linux" });
-    fixture.bots = [];
-    fixture.instances = [{
-      instanceId: "agy", displayName: "Antigravity", driverKind: "antigravityAgent", cliDefault: "agy",
-      snapshot: { state: "available", authenticated: false }, models: { default: "model", options: [] },
-      install: { managed: { label: "Install Antigravity", downloadBytes: 10 } },
-    }];
-    const html = renderToStaticMarkup(createElement(EnginesSettings));
-    expect(html).toContain("Sign in with Google");
-    expect(html).toContain("Set up");
-    expect(html).toContain("CLI path and updates");
-    fixture.instances[0].access = "custom";
-    expect(renderToStaticMarkup(createElement(EnginesSettings))).not.toContain("Sign in with Google");
   });
 
   // MOCA-292: a key engine has no CLI, so it used to drop off this page the

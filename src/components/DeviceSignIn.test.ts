@@ -113,7 +113,8 @@ describe("Grok Build device sign-in UI", () => {
   const renderGrok = (auth: DeviceSignInStatus) => renderToStaticMarkup(createElement(DeviceSignInProgress, { auth, provider: "grok" }));
 
   it("shows the code and xAI's own page, in Grok's words, not ChatGPT's", () => {
-    expect(deviceSignInProvider("grokAgent")).toBe("grok");
+    // Device codes for engines now map to Codex; Grok copy remains for explicit provider="grok" UI.
+    expect(deviceSignInProvider("grokAgent")).toBe("codex");
     expect(deviceSignInProvider("codex")).toBe("codex");
     const html = renderGrok(grok);
     expect(html).toContain("WDJB-MJHT");

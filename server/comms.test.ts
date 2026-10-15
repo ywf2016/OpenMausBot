@@ -1,5 +1,5 @@
 // Routine agent-to-agent comms on the job runtime, end to end: boots the real
-// harness server with the grokAgent driver pointed at the fake ACP CLI, then
+// harness server with the kimiAgent driver pointed at the fake ACP CLI, then
 // has bot A's "agent" reach bot B through the injected agents proxy
 // (list_bots → coordinate_bots → A's turn ends → B's turn runs with the
 // runtime's envelope → the report resumes A in a later turn). Every case
@@ -182,7 +182,7 @@ describe("routine comms e2e on the job runtime (fake ACP fleet)", () => {
     return created;
   };
   const HELPER = { instanceId: "helper", model: "fake-model" };
-  const ASKER = { instanceId: "grok", model: "fake-model" };
+  const ASKER = { instanceId: "kimi", model: "fake-model" };
   const DELEGATOR = { instanceId: "askerDelegate", model: "fake-model" };
   const lastText = (messages: any[]): any => messages.findLast((m: any) => m.kind === "text" && m.role === "bot");
   const chip = (messages: any[], name: string): any => messages.find((m: any) => m.kind === "activity" && m.tool?.name === name);
@@ -268,8 +268,8 @@ describe("routine comms e2e on the job runtime (fake ACP fleet)", () => {
           // the asker: "ask-peer" consults the first visible teammate with
           // coordinate_bots(consult: true) and answers a later resume that
           // carries the result with a fixed line.
-          grok: {
-            driver: "grokAgent",
+          kimi: {
+            driver: "kimiAgent",
             environment: { FAKE_ACP_MODE: "ask-peer" },
             config: { cli: FAKE_CLI, fullAuto: true },
           },
@@ -277,21 +277,21 @@ describe("routine comms e2e on the job runtime (fake ACP fleet)", () => {
           // that itself consulted would recurse until the depth limit. The
           // helpers play plain happy text and dump what they were told.
           helper: {
-            driver: "grokAgent",
+            driver: "kimiAgent",
             environment: { FAKE_ACP_MODE: "happy", FAKE_ACP_DUMP: join(home, "helper.json"), FAKE_ACP_DUMP_PROMPT: "1" },
             config: { cli: FAKE_CLI, fullAuto: true },
           },
           // a helper that lists the tools of every MCP server its turn was
           // given: proof of what a delegated turn can reach
           helperTools: {
-            driver: "grokAgent",
+            driver: "kimiAgent",
             environment: { FAKE_ACP_MODE: "mcp-tools" },
             config: { cli: FAKE_CLI, fullAuto: true },
           },
           // Antigravity uses Google's official ACP server. This instance
           // proves its session-scoped MCP mount reaches the same agents proxy.
           geminiAsker: {
-            driver: "antigravityAgent",
+            driver: "kimiAgent",
             environment: {
               FAKE_ACP_MODE: "ask-peer",
               FAKE_ACP_AUTH_METHOD: "oauth-personal",
@@ -302,7 +302,7 @@ describe("routine comms e2e on the job runtime (fake ACP fleet)", () => {
           },
           // the asker that hands work on with coordinate_bots (mode work)
           askerDelegate: {
-            driver: "grokAgent",
+            driver: "kimiAgent",
             environment: { FAKE_ACP_MODE: "delegate-peer" },
             config: { cli: FAKE_CLI, fullAuto: true },
           },
@@ -312,13 +312,13 @@ describe("routine comms e2e on the job runtime (fake ACP fleet)", () => {
           // session/new, so this agent cannot load its session and the
           // resume replays the conversation into a new one.
           askerRedelegate: {
-            driver: "grokAgent",
+            driver: "kimiAgent",
             environment: { FAKE_ACP_MODE: "delegate-peer", FAKE_ACP_REDELEGATE_FILE: join(home, "redelegated"), FAKE_ACP_LOAD_NULL: "1" },
             config: { cli: FAKE_CLI, fullAuto: true },
           },
           // the same asker on an agent that cannot load its earlier session
           askerNoLoad: {
-            driver: "grokAgent",
+            driver: "kimiAgent",
             environment: {
               FAKE_ACP_MODE: "delegate-peer",
               FAKE_ACP_LOAD_NULL: "1",
@@ -330,7 +330,7 @@ describe("routine comms e2e on the job runtime (fake ACP fleet)", () => {
           // A Chief that hands work on only on the first assignment prompt,
           // then answers ordinary follow-ups while the worker remains gated.
           chiefAsync: {
-            driver: "grokAgent",
+            driver: "kimiAgent",
             environment: {
               FAKE_ACP_MODE: "chief-delegate",
               FAKE_ACP_TASKID_FILE: join(home, "chief-task-id"),
@@ -339,7 +339,7 @@ describe("routine comms e2e on the job runtime (fake ACP fleet)", () => {
             config: { cli: FAKE_CLI, fullAuto: true },
           },
           chiefCreator: {
-            driver: "grokAgent",
+            driver: "kimiAgent",
             environment: { FAKE_ACP_MODE: "create-peer" },
             config: { cli: FAKE_CLI, fullAuto: true },
           },
@@ -347,7 +347,7 @@ describe("routine comms e2e on the job runtime (fake ACP fleet)", () => {
           // ends with ok=false, so the requester must see a failed chip and
           // be resumed with the failure, not silence.
           helperCrash: {
-            driver: "grokAgent",
+            driver: "kimiAgent",
             environment: { FAKE_ACP_MODE: "exit-early" },
             config: { cli: FAKE_CLI, fullAuto: true },
           },
@@ -355,7 +355,7 @@ describe("routine comms e2e on the job runtime (fake ACP fleet)", () => {
           // only an image — the requester still needs a positive terminal
           // record for output a person can see but not read.
           helperImage: {
-            driver: "grokAgent",
+            driver: "kimiAgent",
             environment: { FAKE_ACP_MODE: "image" },
             config: { cli: FAKE_CLI, fullAuto: true },
           },
@@ -366,14 +366,14 @@ describe("routine comms e2e on the job runtime (fake ACP fleet)", () => {
           // file exists, then echo their prompt (the slow-peer e2e frees the
           // peer by writing the file).
           helperGate: {
-            driver: "grokAgent",
+            driver: "kimiAgent",
             environment: { FAKE_ACP_MODE: "echo-gated", FAKE_ACP_GATE_FILE: gateFile },
             config: { cli: FAKE_CLI, fullAuto: true },
           },
           // a teammate whose delegated turn stops on a tool approval card
           // and waits there until a person answers it
           helperPermission: {
-            driver: "grokAgent",
+            driver: "kimiAgent",
             environment: { FAKE_ACP_MODE: "permission" },
             config: { cli: FAKE_CLI, fullAuto: false },
           },

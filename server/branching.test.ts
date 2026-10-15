@@ -1,5 +1,5 @@
 // Conversation branching, end to end: boots the real harness server with
-// the grokAgent driver on the fake ACP CLI, runs a real turn, edits the
+// the kimiAgent driver on the fake ACP CLI, runs a real turn, edits the
 // user message, and asserts the conversation forks — the old branch stays
 // in the tree but off the active path, the edited branch gets its own
 // reply, and version switching flips between the two. A second instance
@@ -78,12 +78,12 @@ posixOnly("conversation branching e2e (fake ACP fleet)", () => {
       join(home, ".openmausbot", "config.json"),
       JSON.stringify({
         instances: {
-          happy: { driver: "grokAgent", config: { cli: FAKE_CLI, fullAuto: true } },
+          happy: { driver: "kimiAgent", config: { cli: FAKE_CLI, fullAuto: true } },
           // a second engine for the mid-thread model switch: same fake, its
           // own instance, so it starts with no session cursor for the thread
-          second: { driver: "grokAgent", config: { cli: FAKE_CLI, fullAuto: true } },
+          second: { driver: "kimiAgent", config: { cli: FAKE_CLI, fullAuto: true } },
           hang: {
-            driver: "grokAgent",
+            driver: "kimiAgent",
             environment: { FAKE_ACP_MODE: "hang" },
             config: { cli: FAKE_CLI, fullAuto: true },
           },

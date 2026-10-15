@@ -36,10 +36,9 @@ interface Msg {
 /** One row per engine family with a fake in server/testing. `tools` is what
  * that fake's default turn is known to emit through its protocol. */
 const ENGINES = [
-  { id: "acp", driver: "grokAgent", cli: "fake-acp-cli.ts", env: {}, tools: ["run"] },
+  { id: "acp", driver: "kimiAgent", cli: "fake-acp-cli.ts", env: {}, tools: ["run"] },
   { id: "claude", driver: "claudeAgent", cli: "fake-claude-cli.ts", env: {}, tools: ["Bash"] },
   { id: "codex", driver: "codex", cli: "fake-codex-app-server.ts", env: {}, tools: ["*"] },
-  { id: "pi", driver: "piAgent", cli: "fake-pi-cli.ts", env: { FAKE_PI_MODE: "tooluse" }, tools: ["bash"] },
 ] as const;
 
 posixOnly("work digest e2e (every fake engine)", () => {
@@ -81,12 +80,12 @@ posixOnly("work digest e2e (every fake engine)", () => {
     // a gated ACP instance for the file-change test, and a second plain ACP
     // instance that echoes its prompt so the replay can be read back
     instances.gated = {
-      driver: "grokAgent",
+      driver: "kimiAgent",
       environment: { FAKE_ACP_MODE: "echo-gated", FAKE_ACP_GATE_FILE: gate(), FAKE_ACP_STARTED_FILE: started() },
       config: { cli: fake("fake-acp-cli.ts"), fullAuto: true },
     };
     instances.echo = {
-      driver: "grokAgent",
+      driver: "kimiAgent",
       environment: { FAKE_ACP_MODE: "echo-gated" },
       config: { cli: fake("fake-acp-cli.ts"), fullAuto: true },
     };

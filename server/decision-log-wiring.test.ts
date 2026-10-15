@@ -105,7 +105,7 @@ async function makePermissionBot(patch: Record<string, unknown>) {
   const bot = created.body.bot;
   const patched = await api("PATCH", `/api/bots/${bot.id}`, {
     ...patch,
-    modelSelection: { instanceId: "grok", model: "fake-model" },
+    modelSelection: { instanceId: "kimi", model: "fake-model" },
   });
   expect(patched.status).toBe(200);
   return patched.body.bot ?? bot;
@@ -120,13 +120,13 @@ posixOnly("authorization decisions are logged", () => {
       join(home, ".openmausbot", "config.json"),
       JSON.stringify({
         instances: {
-          grok: {
-            driver: "grokAgent",
+          kimi: {
+            driver: "kimiAgent",
             environment: { FAKE_ACP_MODE: "permission" },
             config: { cli: FAKE_CLI, fullAuto: false },
           },
           grokq: {
-            driver: "grokAgent",
+            driver: "kimiAgent",
             environment: { FAKE_ACP_MODE: "question" },
             config: { cli: FAKE_CLI, fullAuto: false },
           },

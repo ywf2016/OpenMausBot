@@ -60,38 +60,14 @@ describe("approval mode selector", () => {
     expect(approvalModeOptionsFor(kind, false).map((option) => option.mode)).toEqual(["ask", "auto", "full"]);
   });
 
-  it("offers Grok its native acceptEdits as Auto-accept edits", () => {
-    expect(approvalModeOptionsFor("grokAgent").map((option) => option.mode)).toEqual(["ask", "edits", "auto", "full"]);
-    expect(approvalModeOptionsFor("grokAgent", false).map((option) => option.mode)).toEqual(["ask", "edits", "auto", "full"]);
-  });
-
-  it("offers Antigravity Auto as the explicit full-access grant, not native review", () => {
-    const options = approvalModeOptionsFor("antigravityAgent");
-    expect(options.map(({ mode, label }) => ({ mode, label }))).toEqual([
-      { mode: "ask", label: "Ask for approval" },
-      { mode: "edits", label: "Auto-accept edits" },
-      { mode: "full", label: "Auto (full access)" },
-    ]);
-    expect(options[2].chip).toBe("Auto");
-    expect(options[2].description).toContain("Automatically approve tool requests");
-    expect(approvalModeOptionsFor("antigravityAgent", false).map((option) => option.mode)).toEqual(["ask", "edits", "full"]);
-  });
-
-  it("shows the effective Antigravity mode without upgrading saved Auto settings", () => {
-    const render = (mode: "ask" | "auto" | "full" | undefined, autoApprove = false, trustedModesAvailable = true) => renderToStaticMarkup(createElement(ApprovalModeSelector, {
-      approvalMode: mode, autoApprove, trustedModesAvailable,
-      providerName: "Antigravity", driverKind: "antigravityAgent", onSelect: () => {},
-    }));
-    for (const html of [render("ask"), render("auto"), render(undefined, true)]) {
-      expect(html).toContain('aria-label="Ask for approval for Antigravity"');
-      expect(html).not.toContain('aria-label="Auto (full access)');
-    }
-    expect(render("full")).toContain('aria-label="Auto (full access) for Antigravity"');
-    expect(render("full", false, false)).toContain('aria-label="Auto (full access) for Antigravity"');
+  it("offers Qwen its native auto-edit as Auto-accept edits", () => {
+    expect(approvalModeOptionsFor("qwenAgent").map((option) => option.mode)).toEqual(["ask", "edits", "auto", "full"]);
+    expect(approvalModeOptionsFor("qwenAgent", false).map((option) => option.mode)).toEqual(["ask", "edits", "auto", "full"]);
   });
 
   it("explains Auto fallbacks and does not elevate unknown providers", () => {
-    expect(approvalModeOptionsFor("grokAgent").find((option) => option.mode === "auto")?.description).toContain("automatic review to approve routine actions");
+    expect(approvalModeOptionsFor("qwenAgent").find((option) => option.mode === "auto")?.description).toContain("automatic review to approve routine actions");
+    expect(approvalModeOptionsFor("claudeAgent").find((option) => option.mode === "auto")?.description).toContain("automatic review to approve routine actions");
     expect(approvalModeOptionsFor("customAgent").find((option) => option.mode === "auto")?.description).toContain("behaves like Ask");
     expect(approvalModeOptionsFor("customAgent").map((option) => option.mode)).toEqual(["ask", "auto"]);
   });
@@ -107,13 +83,13 @@ describe("approval mode selector", () => {
 
   it("keeps the composer trigger icon-only and the settings trigger labeled", () => {
     const compact = renderToStaticMarkup(createElement(ApprovalModeSelector, {
-      approvalMode: "full", providerName: "Grok", driverKind: "grokAgent", onSelect: () => {},
+      approvalMode: "full", providerName: "Claude", driverKind: "claudeAgent", onSelect: () => {},
     }));
-    expect(compact).toContain('aria-label="Full access for Grok"');
+    expect(compact).toContain('aria-label="Full access for Claude"');
     expect(compact).toContain('title="Full access"');
     expect(compact).not.toMatch(/<span class="truncate">Full access<\/span>/);
     const settings = renderToStaticMarkup(createElement(ApprovalModeSelector, {
-      approvalMode: "full", providerName: "Grok", driverKind: "grokAgent", onSelect: () => {}, wide: true,
+      approvalMode: "full", providerName: "Claude", driverKind: "claudeAgent", onSelect: () => {}, wide: true,
     }));
     expect(settings).toMatch(/<span class="truncate">Full access<\/span>/);
   });

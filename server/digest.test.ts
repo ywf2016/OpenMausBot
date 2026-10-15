@@ -208,15 +208,14 @@ describe("coverageForDriver", () => {
   it("reports observed evidence regardless of engine family", async () => {
     const { coverageForDriver } = await import("./digest.ts");
     expect(coverageForDriver("openai-compat", false, true)).toBe("preview");
-    expect(coverageForDriver("grok", false, true)).toBe("preview");
-    expect(coverageForDriver("minimax", false, true)).toBe("preview");
+    expect(coverageForDriver("kimiAgent", false, true)).toBe("preview");
     expect(coverageForDriver("claudeAgent")).toBe("none");
     expect(coverageForDriver("claudeAgent", false, true)).toBe("preview");
     expect(coverageForDriver("codex", false, true)).toBe("preview");
-    expect(coverageForDriver("grokAgent", false, true)).toBe("preview");
-    expect(coverageForDriver("piAgent", false, true)).toBe("preview");
+    expect(coverageForDriver("qwenAgent", false, true)).toBe("preview");
+    expect(coverageForDriver("cursorAgent", false, true)).toBe("preview");
     expect(coverageForDriver("claudeAgent", true)).toBe("full");
-    expect(coverageForDriver("grok", true)).toBe("full");
+    expect(coverageForDriver("openai-compat", true)).toBe("full");
     expect(coverageForDriver(undefined)).toBe("none");
   });
 });

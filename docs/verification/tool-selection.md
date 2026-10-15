@@ -41,32 +41,9 @@ the transcript is unchanged and no provider is launched.
 
 ## Official CLI contract checks
 
-Install the official Pi CLI into a disposable prefix, then supply its absolute
-path. The scripts configure their own loopback synthetic provider:
-
-```sh
-node --experimental-strip-types scripts/verify-pi-tool-scope.ts /absolute/path/to/pi
-node --experimental-strip-types scripts/verify-tool-scope.ts /absolute/path/to/grok
-pnpm build:server
-node --experimental-strip-types scripts/verify-pi-tool-scope.ts /absolute/path/to/pi dist-server/drivers/pi-mcp-extension.ts
-```
-
-Verified contracts: **Pi 0.99.1**, **Grok 1.0.41**. Pi checks late package tool
-activation as well as native/custom tools. Grok checks inherited profiles,
-model-specific harness changes, resumed selections, explicit MCP helpers,
-managed gateway suppression and refusal of unexpected native MCP servers.
-These scripts intentionally request withheld tools through the synthetic
-provider and check that they never execute. They do not benchmark a model.
-
-Grok's restricted profile is established on the requested model, with the
-default harness pinned before spawn. The session must acknowledge the selected
-model before prompting; a redundant model switch must not restore tools or
-reject an otherwise valid resumed profile. Unknown inherited harnesses and unverified native-selection
-runtime versions refuse the turn. The official CLI probe also checks commented
-agent headings and refusal of quoted/dotted syntax. Unit checks cover inline
-tables, CLI overrides and ambiguous profiles. Codex's real gate subprocess
-regression exercises two servers on new/resumed threads, raw discovery and
-calls, blocked calls, independent custom approvals, and private env stripping.
+Codex's real gate subprocess regression exercises two servers on new/resumed
+threads, raw discovery and calls, blocked calls, independent custom approvals,
+and private env stripping.
 
 The October 1 review follow-up also exercised actual native shell commands
 through Codex **0.156.1** and **0.159.2**, using a loopback synthetic Responses
@@ -78,23 +55,6 @@ disable inherited shell snapshots because snapshots can restore variables
 after environment filtering. If that override cannot be confirmed, or the
 effective exclusion policy is malformed, no prompt is sent. These checks used
 no real Codex account or paid model.
-
-## Real local-model check
-
-Load a tool-capable local model separately with an **8192-token context**, one
-parallel request, and an explicit temporary identifier. Confirm those values
-with the runtime's loaded-model report, then run Pi and Grok sequentially:
-
-```sh
-node --experimental-strip-types scripts/verify-local-tool-selection.ts pi /absolute/path/to/pi http://127.0.0.1:1234/v1 MODEL_ID
-node --experimental-strip-types scripts/verify-local-tool-selection.ts grok /absolute/path/to/grok http://127.0.0.1:1234/v1 MODEL_ID
-```
-
-The proxy forwards actual model responses and unmodified tool schemas. It
-caps generation at 768 tokens and each turn at 12 requests. It captures schema
-names/bytes and provider-reported usage, waits for response evidence, and
-checks the file and MCP execution receipts. Unload only the test model when
-finished; leave other projects and the local-model service running.
 
 ### Physical Mac evidence, 2026-09-30
 

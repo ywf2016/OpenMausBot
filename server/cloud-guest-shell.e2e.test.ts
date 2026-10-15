@@ -100,7 +100,7 @@ if (process.argv[2] !== "--version") { process.env.FAKE_CLAUDE_DUMP = ${JSON.str
       held: { driver: "claudeAgent", displayName: "Held", config: { cli: held("claude") } },
       teammate: { driver: "claudeAgent", displayName: "Teammate", config: { cli: held("teammate") } },
       // An engine that cannot run a turn without its own shell (ACP).
-      shelled: { driver: "grokAgent", displayName: "Shelled", config: { cli: join(SERVER_DIR, "testing", "fake-acp-cli.ts") } },
+      shelled: { driver: "kimiAgent", displayName: "Shelled", config: { cli: join(SERVER_DIR, "testing", "fake-acp-cli.ts") } },
     },
   }));
   const port = await freePortBlock([0, 1]);

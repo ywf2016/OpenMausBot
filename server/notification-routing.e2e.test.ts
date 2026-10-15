@@ -135,7 +135,7 @@ beforeAll(async () => {
       // stops mid-turn to ask the person a question no rule may answer —
       // the card that has to reach a human even from a peer's turn
       curious: {
-        driver: "grokAgent",
+        driver: "kimiAgent",
         displayName: "Curious fixture",
         environment: { FAKE_ACP_MODE: "question" },
         config: { cli: FAKE_ACP, fullAuto: true },
@@ -144,7 +144,7 @@ beforeAll(async () => {
       // injected agents proxy (coordinate_bots with consult: true) and ends
       // its turn; the answer resumes it, and that turn says it saw the result
       asker: {
-        driver: "grokAgent",
+        driver: "kimiAgent",
         displayName: "Asker fixture",
         environment: { FAKE_ACP_MODE: "ask-peer" },
         config: { cli: FAKE_ACP, fullAuto: true },

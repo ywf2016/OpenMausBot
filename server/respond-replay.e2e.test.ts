@@ -101,7 +101,7 @@ posixOnly("a replayed respond for a settled card", () => {
     const data = join(home, ".openmausbot");
     mkdirSync(data, { recursive: true });
     writeFileSync(join(data, "config.json"), JSON.stringify({
-      instances: { grok: { driver: "grokAgent", environment: { FAKE_ACP_MODE: "permission" }, config: { cli: FAKE_CLI, fullAuto: false } } },
+      instances: { kimi: { driver: "kimiAgent", environment: { FAKE_ACP_MODE: "permission" }, config: { cli: FAKE_CLI, fullAuto: false } } },
     }));
     await start();
   }, 40_000);
@@ -115,7 +115,7 @@ posixOnly("a replayed respond for a settled card", () => {
     const created = await api("POST", "/api/bots", { name: "Replayed" });
     expect(created.status, JSON.stringify(created.body)).toBe(201);
     const bot = created.body.bot as { id: string; threadId: string };
-    const patched = await api("PATCH", `/api/bots/${bot.id}`, { modelSelection: { instanceId: "grok", model: "fake-model" } });
+    const patched = await api("PATCH", `/api/bots/${bot.id}`, { modelSelection: { instanceId: "kimi", model: "fake-model" } });
     expect(patched.status).toBe(200);
 
     const sent = await api("POST", `/api/bots/${bot.id}/messages`, { text: "run it", threadId: bot.threadId });
