@@ -8,20 +8,18 @@ export type ApprovalMode = (typeof APPROVAL_MODES)[number];
 
 /** Only providers with an implemented permission mapping may expose a level.
  * `edits` (auto-accept edits) exists where the engine has such a mode:
- * Claude and Grok `acceptEdits`, Antigravity `auto_edit`, Qwen `auto-edit`,
- * Gemini `auto_edit`. Codex's Ask already runs `workspace-write`, so an edits
- * level would change nothing there. */
+ * Claude `acceptEdits`, Qwen `auto-edit`. Codex's Ask already runs
+ * `workspace-write`, so an edits level would change nothing there. */
 export function supportsApprovalMode(driverKind: string | undefined, mode: ApprovalMode): boolean {
   if (mode === "custom") return driverKind === "codex";
-  if (mode === "edits") return ["claudeAgent", "grokAgent", "antigravityAgent", "qwenAgent", "geminiAgent"].includes(driverKind ?? "");
+  if (mode === "edits") return ["claudeAgent", "qwenAgent"].includes(driverKind ?? "");
   if (mode !== "full") return true;
   // The chat-completions family has no provider-side reviewer, so Full is
   // implemented in the harness: createOpenAIChatRuntime answers its own tool
   // gate instead of opening a card. Without this a bot on one of these
   // engines could never stop asking — not by its own level, and not through
   // a Chief's delegated Full access either.
-  return ["codex", "claudeAgent", "antigravityAgent", "cursorAgent", "grokAgent", "opencodeGo", "qwenAgent", "geminiAgent",
-    "clineAgent", "openai-compat", "grok", "minimax", "mistral", "cerebras", "groq", "meta", "museCode"].includes(driverKind ?? "");
+  return ["codex", "claudeAgent", "cursorAgent", "opencodeGo", "qwenAgent", "openai-compat"].includes(driverKind ?? "");
 }
 
 /** Whether switching engines must first drop this level to Ask. A Custom
@@ -41,7 +39,7 @@ export function modelSwitchNeedsAsk(
 export function hasNativeAutoReview(driverKind: string | undefined): boolean {
   // Qwen Code's `--approval-mode auto` is an LLM classifier that approves
   // safe actions and blocks risky ones — a reviewer, not a rubber stamp.
-  return ["codex", "claudeAgent", "cursorAgent", "grokAgent", "qwenAgent"].includes(driverKind ?? "");
+  return ["codex", "claudeAgent", "cursorAgent", "qwenAgent"].includes(driverKind ?? "");
 }
 
 export function isApprovalMode(value: unknown): value is ApprovalMode {

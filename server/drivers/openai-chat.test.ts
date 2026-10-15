@@ -9,10 +9,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ensureDirs, NATIVE_DIR } from "../config.ts";
 import type { RuntimeEvent } from "../contracts.ts";
-import { GrokDriver } from "./grok.ts";
-import { MinimaxDriver } from "./minimax.ts";
 import { OpenAICompatDriver } from "./openai-compat.ts";
-import { MistralDriver } from "./mistral.ts";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -20,20 +17,14 @@ const sse = (body: string) => new Response(body, { status: 200, headers: { "cont
 
 /** `body` is the stream every request gets, or a factory for each chat
  * completion request (the model catalog fetch then gets a 404). */
-async function runTurn(body: string | (() => Response), driver: "openai-compat" | "minimax" = "openai-compat") {
+async function runTurn(body: string | (() => Response)) {
   vi.stubGlobal("fetch", vi.fn(async (url: string | URL) => typeof body === "string" ? sse(body)
     : String(url).endsWith("/chat/completions") ? body() : new Response("", { status: 404 })));
-  const instance = driver === "minimax"
-    ? await MinimaxDriver.create({
-        instanceId: "minimax", displayName: "MiniMax", enabled: true,
-        config: MinimaxDriver.defaultConfig(),
-        environment: { MINIMAX_API_KEY: "secret" },
-      })
-    : await OpenAICompatDriver.create({
-        instanceId: "minimax", displayName: "MiniMax", enabled: true,
-        config: OpenAICompatDriver.decodeConfig({ url: "https://api.minimax.io/v1", apiKeyEnv: "MINIMAX_API_KEY", model: "MiniMax-M3" }),
-        environment: { MINIMAX_API_KEY: "secret" },
-      });
+  const instance = await OpenAICompatDriver.create({
+    instanceId: "minimax", displayName: "MiniMax", enabled: true,
+    config: OpenAICompatDriver.decodeConfig({ url: "https://api.minimax.io/v1", apiKeyEnv: "MINIMAX_API_KEY", model: "MiniMax-M3" }),
+    environment: { MINIMAX_API_KEY: "secret" },
+  });
   const events: RuntimeEvent[] = [];
   instance.adapter.onEvent((event) => events.push(event));
   await instance.adapter.sendTurn({ threadId: "thread", text: "hi" });
@@ -45,28 +36,30 @@ async function runTurn(body: string | (() => Response), driver: "openai-compat" 
 }
 
 describe("createOpenAIChatRuntime one-shot usage", () => {
+  const helperModel = "fixture-helper";
   const fixture = async (body: unknown) => {
     vi.stubGlobal("fetch", vi.fn(async (_url: unknown, init?: RequestInit) => {
       init?.signal?.throwIfAborted();
       return new Response(typeof body === "string" ? body : JSON.stringify(body), { headers: { "content-type": "application/json" } });
     }));
-    return GrokDriver.create({
-      instanceId: "grok-helper", displayName: "Grok", enabled: true,
-      config: GrokDriver.defaultConfig(), environment: { XAI_API_KEY: "fixture-key" },
+    return OpenAICompatDriver.create({
+      instanceId: "compat-helper", displayName: "Compat", enabled: true,
+      config: OpenAICompatDriver.decodeConfig({ url: "https://api.example.test/v1", apiKeyEnv: "FIXTURE_CHAT_KEY", model: helperModel }),
+      environment: { FIXTURE_CHAT_KEY: "fixture-key" },
     });
   };
   const choices = [{ message: { content: "helper result" }, finish_reason: "stop" }];
 
   it("reports the actual helper model and known provider usage once, preserving the text result", async () => {
     const instance = await fixture({
-      model: "grok-3-mini-actual", choices,
+      model: "fixture-helper-actual", choices,
       usage: { prompt_tokens: 120, completion_tokens: 20, prompt_tokens_details: { cached_tokens: 100 }, cost: 0.004 },
     });
     const onUsage = vi.fn();
     await expect(instance.generateText!("summarize", { onUsage })).resolves.toBe("helper result");
-    expect(JSON.parse(vi.mocked(fetch).mock.calls[0]![1]!.body as string).model).toBe("grok-3-mini");
-    expect(instance.models.default).toBe("grok-4.7");
-    expect(onUsage.mock.calls).toEqual([[{ model: "grok-3-mini-actual", input: 120, output: 20, cachedInput: 100, costUsd: 0.004 }]]);
+    expect(JSON.parse(vi.mocked(fetch).mock.calls[0]![1]!.body as string).model).toBe(helperModel);
+    expect(instance.models.default).toBe(helperModel);
+    expect(onUsage.mock.calls).toEqual([[{ model: "fixture-helper-actual", input: 120, output: 20, cachedInput: 100, costUsd: 0.004 }]]);
     await expect(instance.generateText!("plain summary")).resolves.toBe("helper result");
     await instance.dispose();
   });
@@ -79,7 +72,7 @@ describe("createOpenAIChatRuntime one-shot usage", () => {
     const instance = await fixture({ choices, usage });
     const onUsage = vi.fn();
     await instance.generateText!("summarize", { onUsage });
-    expect(onUsage.mock.calls).toEqual([[{ model: "grok-3-mini", input: expected, output: expected, cachedInput: expected, costUsd: expected }]]);
+    expect(onUsage.mock.calls).toEqual([[{ model: helperModel, input: expected, output: expected, cachedInput: expected, costUsd: expected }]]);
     await instance.dispose();
   });
 
@@ -91,7 +84,7 @@ describe("createOpenAIChatRuntime one-shot usage", () => {
     const instance = await fixture({ ...body, usage: { prompt_tokens: 10, completion_tokens: 5 } });
     const onUsage = vi.fn();
     await expect(instance.generateText!("summarize", { onUsage })).rejects.toThrow();
-    expect(onUsage.mock.calls).toEqual([[{ model: "grok-3-mini", input: 10, output: 5, cachedInput: undefined, costUsd: undefined }]]);
+    expect(onUsage.mock.calls).toEqual([[{ model: helperModel, input: 10, output: 5, cachedInput: undefined, costUsd: undefined }]]);
     await instance.dispose();
   });
 
@@ -143,7 +136,7 @@ describe("createOpenAIChatRuntime tool approvals", () => {
     return { command: script, args: [], env: receipt ? { RECEIPT: receipt } : {} };
   };
 
-  it.each(["openai", "grok", "mistral", "minimax"] as const)("scopes %s schemas and blocks a remembered native question even under Full access", async (driver) => {
+  it.each(["openai"] as const)("scopes %s schemas and blocks a remembered native question even under Full access", async () => {
     const dir = mkdtempSync(join(tmpdir(), "omb-api-scope-")); mcpDir.push(dir);
     const receipt = join(dir, "calls.txt");
     const calls = [
@@ -160,11 +153,11 @@ describe("createOpenAIChatRuntime tool approvals", () => {
       bodies.push(JSON.parse(String(init?.body)));
       return new Response(bodies.length === 1 ? first : last, { headers: { "content-type": "text/event-stream" } });
     }));
-    const common = { instanceId: "scope", displayName: "Synthetic scoped engine", enabled: true, environment: { K: "synthetic", XAI_API_KEY: "synthetic", MISTRAL_API_KEY: "synthetic", MINIMAX_API_KEY: "synthetic" } };
-    const instance = driver === "openai" ? await OpenAICompatDriver.create({ ...common, config: OpenAICompatDriver.decodeConfig({ url: "https://api.example.test/v1", apiKeyEnv: "K", model: "fixture" }) })
-      : driver === "grok" ? await GrokDriver.create({ ...common, config: GrokDriver.defaultConfig() })
-      : driver === "mistral" ? await MistralDriver.create({ ...common, config: MistralDriver.defaultConfig() })
-      : await MinimaxDriver.create({ ...common, config: MinimaxDriver.defaultConfig() });
+    const instance = await OpenAICompatDriver.create({
+      instanceId: "scope", displayName: "Synthetic scoped engine", enabled: true,
+      environment: { K: "synthetic" },
+      config: OpenAICompatDriver.decodeConfig({ url: "https://api.example.test/v1", apiKeyEnv: "K", model: "fixture" }),
+    });
     const events: RuntimeEvent[] = []; instance.adapter.onEvent((event) => events.push(event));
     try {
       await instance.adapter.sendTurn({ threadId: "scoped-api", text: "Use only the selected tool.", approvalMode: "full", toolScope: { allow: ["mcp:fx:write"] }, integrations: { custom: { fx: toolServer(receipt) } } });
@@ -603,12 +596,11 @@ describe("createOpenAIChatRuntime stream termination", () => {
     expect(events.at(-1)).toMatchObject({ type: "turn.completed", ok: false, stopReason: "error" });
   });
 
-  it("lets the MiniMax driver finish a [DONE]-less reasoning_split stream and stream its reasoning", async () => {
+  it("lets an OpenAI-compat MiniMax endpoint finish a [DONE]-less reasoning_split stream and stream its reasoning", async () => {
     const events = await runTurn(
       'data: {"choices":[{"index":0,"delta":{"reasoning_content":"user said hi"}}]}\n\n' +
         'data: {"choices":[{"index":0,"finish_reason":"stop","delta":{"content":"Hello!"}}]}\n\n' +
         'data: {"choices":[],"usage":{"prompt_tokens":5,"completion_tokens":9}}\n\n',
-      "minimax",
     );
     expect(events.filter((event) => event.type === "content.delta").map((event) => event.streamKind))
       .toEqual(["reasoning_text", "assistant_text"]);
@@ -690,17 +682,17 @@ describe("createOpenAIChatRuntime refused tool calls", () => {
 });
 
 describe("createOpenAIChatRuntime HTTP error text", () => {
-  // MOCA-228: an xAI account with no credits left answered with a raw,
+  // MOCA-228: an account with no credits left answered with a raw,
   // cut-off JSON envelope instead of the provider's own sentence.
-  const XAI_NO_CREDITS = "Your team 0000-fixture has either used all available credits or reached its monthly spending limit. To continue making API requests, please purchase more credits or raise your spending limit.";
+  const NO_CREDITS = "Your team 0000-fixture has either used all available credits or reached its monthly spending limit. To continue making API requests, please purchase more credits or raise your spending limit.";
   const failure = async (status: number, body: string) => {
     const fetchMock = vi.fn(async (url: string | URL) =>
       String(url).endsWith("/chat/completions") ? new Response(body, { status }) : new Response("", { status: 404 }));
     vi.stubGlobal("fetch", fetchMock);
-    const instance = await GrokDriver.create({
-      instanceId: "xaiApi", displayName: "xAI", enabled: true,
-      config: GrokDriver.decodeConfig({ url: "https://xai.invalid/v1" }),
-      environment: { XAI_API_KEY: "fixture-key" },
+    const instance = await OpenAICompatDriver.create({
+      instanceId: "compatApi", displayName: "Compat", enabled: true,
+      config: OpenAICompatDriver.decodeConfig({ url: "https://compat.invalid/v1", apiKeyEnv: "FIXTURE_CHAT_KEY" }),
+      environment: { FIXTURE_CHAT_KEY: "fixture-key" },
     });
     const events: RuntimeEvent[] = [];
     const stop = instance.adapter.onEvent((event) => events.push(event));
@@ -711,26 +703,27 @@ describe("createOpenAIChatRuntime HTTP error text", () => {
     stop();
     const error = events.find((event) => event.type === "runtime.error") as { message: string } | undefined;
     const calls = fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/chat/completions")).length;
+    await instance.dispose();
     return { message: error?.message, calls };
   };
 
   it("shows an out-of-credits account in the provider's own words, whole, and does not retry it", async () => {
     const { message, calls } = await failure(402, JSON.stringify({
       code: "The caller does not have permission to execute the specified operation",
-      error: XAI_NO_CREDITS,
+      error: NO_CREDITS,
     }));
-    expect(message).toBe(`xAI HTTP 402: ${XAI_NO_CREDITS}`);
+    expect(message).toBe(`upstream HTTP 402: ${NO_CREDITS}`);
     expect(calls).toBe(1);
   });
 
   it("reads an OpenAI-style error envelope's message", async () => {
     const { message } = await failure(401, JSON.stringify({ error: { message: "Incorrect API key provided", code: "invalid_api_key" } }));
-    expect(message).toBe("xAI HTTP 401: Incorrect API key provided (invalid_api_key)");
+    expect(message).toBe("upstream HTTP 401: Incorrect API key provided (invalid_api_key)");
   });
 
   it("keeps a body that is not a JSON error envelope as it was sent", async () => {
-    expect((await failure(400, "upstream rejected the request")).message).toBe("xAI HTTP 400: upstream rejected the request");
-    expect((await failure(400, JSON.stringify({ status: "rejected" }))).message).toBe('xAI HTTP 400: {"status":"rejected"}');
+    expect((await failure(400, "upstream rejected the request")).message).toBe("upstream HTTP 400: upstream rejected the request");
+    expect((await failure(400, JSON.stringify({ status: "rejected" }))).message).toBe('upstream HTTP 400: {"status":"rejected"}');
   });
 });
 

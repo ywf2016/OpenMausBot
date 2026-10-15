@@ -1,6 +1,6 @@
 // Config + data dirs. One file, ~/.openmausbot/config.json, env fallbacks:
 //   { "xai": {"key":"xai-…"}, "composio": {"apiKey":"ak_…"}, "box": {"token":"…"},
-//     "instances": { "<instanceId>": {"driver":"grok", …} } }
+//     "instances": { "<instanceId>": {"driver":"claudeAgent", …} } }
 import { readFileSync, mkdirSync, existsSync, renameSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -435,10 +435,7 @@ const appConfigSchema = z.object({
     publicUrl: z.string().url().optional(),
     phone: z.enum(["ios", "android"]).optional(),
   }).optional(),
-  mistral: z.object({ key: optionalText }).optional(),
-  cerebras: z.object({ key: optionalText }).optional(),
-  groq: z.object({ key: optionalText, url: optionalText }).optional(),
-  meta: z.object({ key: optionalText, url: optionalText }).optional(),
+  /** xAI key for Grok TTS and avatar image generation (not an agent engine). */
   xai: z.object({ key: optionalText, url: optionalText }).optional(),
   /** Anthropic API key for Claude Code billed per token, handed only to
    * Claude instances; `url` only for a proxy or a test double. Never a
@@ -633,11 +630,8 @@ export interface AppConfig {
   };
   mcpServers?: Record<string, unknown>;
   language?: string;
+  /** xAI key for Grok TTS and avatar image generation (not an agent engine). */
   xai?: { key?: string; url?: string };
-  mistral?: { key?: string };
-  cerebras?: { key?: string };
-  groq?: { key?: string; url?: string };
-  meta?: { key?: string; url?: string };
   /** `everyClaudeBot`: the key runs every Claude bot instead of its login.
    * Unset means true, which is how a key behaved before it had its own
    * `claudeApi` instance; a key first saved from Settings sets false. */
@@ -977,18 +971,14 @@ export function engineLaunches(configs: InstanceConfigMap, env: Record<string, s
 }
 
 /** The workspace env an in-process API-key driver reads when the instance's
- * own environment lacks it (mistral.ts, cerebras.ts, grok.ts,
- * openai-compat.ts): an instance with its own address gets no injected key,
- * yet still reads the saved one from here. OpenAI's and OpenRouter's own
- * instances read only their own key. */
+ * own environment lacks it (openai-compat.ts): an instance with its own
+ * address gets no injected key, yet still reads the saved one from here.
+ * OpenAI's and OpenRouter's own instances read only their own key. */
 function fallbackEnv(entry: InstanceConfigMap[string]): string[] {
   const config = typeof entry.config === "object" && entry.config !== null && !Array.isArray(entry.config)
     ? entry.config as { apiKeyEnv?: unknown } : {};
   const named = typeof config.apiKeyEnv === "string" && config.apiKeyEnv ? config.apiKeyEnv : undefined;
   switch (entry.driver) {
-    case "mistral": return ["MISTRAL_API_KEY"];
-    case "cerebras": return ["CEREBRAS_API_KEY"];
-    case "grok": return [named ?? "XAI_API_KEY"];
     case "openai-compat":
       return named && Object.values(API_KEY_FLEET).some((own) => (own.config as { apiKeyEnv?: string } | undefined)?.apiKeyEnv === named)
         ? [named]
@@ -1089,16 +1079,6 @@ export function loadConfig(): AppConfig {
   // Anything that saves a credential mid-session must keep process.env in
   // step (syncCredentialEnv below), or the value injected at boot would
   // shadow the save until the next launch.
-  cfg.mistral = { ...cfg.mistral };
-  if (process.env.MISTRAL_API_KEY !== undefined) cfg.mistral.key = process.env.MISTRAL_API_KEY;
-  cfg.cerebras = { ...cfg.cerebras };
-  if (process.env.CEREBRAS_API_KEY !== undefined) cfg.cerebras.key = process.env.CEREBRAS_API_KEY;
-  cfg.groq = { ...cfg.groq };
-  // Keep the workspace key separate from an operator's OpenCode Groq key.
-  if (process.env.OMB_GROQ_API_KEY !== undefined) cfg.groq.key = process.env.OMB_GROQ_API_KEY;
-  cfg.meta = { ...cfg.meta };
-  // Keep the workspace key separate from a Muse Code login's META_API_KEY.
-  if (process.env.OMB_META_API_KEY !== undefined) cfg.meta.key = process.env.OMB_META_API_KEY;
   cfg.xai = { ...cfg.xai };
   if (process.env.XAI_API_KEY !== undefined) cfg.xai.key = process.env.XAI_API_KEY;
   // Deliberately not ANTHROPIC_API_KEY: a key in the server's own env is
@@ -1183,10 +1163,6 @@ export function cacheUntilConfigChanges<T>(derive: (config: AppConfig) => T): ()
 export function syncCredentialEnv(patch: Partial<Omit<AppConfig, "threads" | "newBots">>): void {
   const secrets: Array<[value: string | undefined, name: string]> = [
     [patch.xai?.key, "XAI_API_KEY"],
-    [patch.mistral?.key, "MISTRAL_API_KEY"],
-    [patch.cerebras?.key, "CEREBRAS_API_KEY"],
-    [patch.groq?.key, "OMB_GROQ_API_KEY"],
-    [patch.meta?.key, "OMB_META_API_KEY"],
     [patch.anthropic?.key, "OMB_ANTHROPIC_API_KEY"],
     [patch.openaiCompat?.key, "OPENAI_COMPAT_API_KEY"],
     [patch.openai?.key, "OMB_OPENAI_API_KEY"],
@@ -1228,10 +1204,6 @@ export function syncCredentialEnv(patch: Partial<Omit<AppConfig, "threads" | "ne
  * child these are someone else's keys riding along in `...process.env`. */
 export const WORKSPACE_CREDENTIAL_ENV = [
   "XAI_API_KEY",
-  "MISTRAL_API_KEY",
-  "CEREBRAS_API_KEY",
-  "OMB_GROQ_API_KEY",
-  "OMB_META_API_KEY",
   "OMB_ANTHROPIC_API_KEY",
   "OMB_ANTHROPIC_API_URL",
   "OMB_HOSTED_MODEL_TOKEN",
@@ -1299,9 +1271,7 @@ export function stripWorkspaceCredentialEnv(env: Record<string, string | undefin
  * along in `...process.env` must not flip a subscription CLI onto
  * pay-as-you-go billing the user never granted. */
 export const PROVIDER_CREDENTIAL_ENV = [
-  "CLINE_API_KEY",
   "ANTHROPIC_API_KEY",
-  "FACTORY_API_KEY",
   "GEMINI_API_KEY",
   "GOOGLE_API_KEY",
   "KIMI_API_KEY",
@@ -1310,21 +1280,16 @@ export const PROVIDER_CREDENTIAL_ENV = [
   "OPENAI_API_KEY",
   "OPENCODE_API_KEY",
   "XAI_API_KEY",
-  "MISTRAL_API_KEY",
-  "CEREBRAS_API_KEY",
   "GROQ_API_KEY",
-  "META_API_KEY",
   "CURSOR_API_KEY",
   "CURSOR_AUTH_TOKEN",
 ] as const;
 
 /** Provider keys OpenCode reads from its environment, as it does in a
  * terminal: with ANTHROPIC_API_KEY set, `opencode` lists Anthropic's models.
- * Keys OpenMaus saves for another engine (xAI, Mistral, the workspace
- * Anthropic key) are workspace credentials under other names and never
- * ride along. */
+ * Keys OpenMaus saves for another engine (the workspace Anthropic key)
+ * are workspace credentials under other names and never ride along. */
 export const OPENCODE_PROVIDER_ENV = [
-  "CLINE_API_KEY",
   "ANTHROPIC_API_KEY",
   "OPENAI_API_KEY",
   "GEMINI_API_KEY",
@@ -1428,7 +1393,7 @@ export function saveConfig(
   // back after we have successfully recognized the legacy list.
   const storedProfiles = storedBrowserProfilesSchema.safeParse(disk.browserProfiles);
   if (storedProfiles.success) disk.browserProfiles = storedProfiles.data;
-  for (const key of ["xai", "anthropic", "mistral", "cerebras", "groq", "meta", "openai", "openrouter", "openaiCompat", "composio", "box", "opencodeGo", "tts", "decider", "imageGen", "live", "profile", "rooms", "mcp", "threads", "context", "memory", "localVm", "features", "budgets", "billing", "decisions", "onboarding", "browserEngine", "newBots"] as const) {
+  for (const key of ["xai", "anthropic", "openai", "openrouter", "openaiCompat", "composio", "box", "opencodeGo", "tts", "decider", "imageGen", "live", "profile", "rooms", "mcp", "threads", "context", "memory", "localVm", "features", "budgets", "billing", "decisions", "onboarding", "browserEngine", "newBots"] as const) {
     const section = checkedPatch[key];
     if (!section) continue;
     const current = jsonObjectSchema.safeParse(disk[key]);
@@ -1564,7 +1529,7 @@ export function saveConfig(
  * PERSISTABLE: instanceConfigs() injects credential env into consuming
  * drivers' entries for the live fleet, so only their originally configured
  * environment is retained — otherwise saving an override would
- * copy xai/box/opencodeGo secrets into the instances section of
+ * copy anthropic/box/opencodeGo secrets into the instances section of
  * config.json. */
 export function withInstanceCli(
   cfg: AppConfig,
@@ -1661,35 +1626,20 @@ export function instanceOwnsRouting(
         || own(entry.environment?.[compatKeyEnv])
         || (own(config.apiKeyEnv) && config.apiKeyEnv !== compatKeyEnv)
         || ownUrl(routingDefaults?.url || cfg.openaiCompat?.url || process.env.OPENAI_COMPAT_URL || "https://openrouter.ai/api/v1");
-    case "mistral":
-      return own(entry.environment?.MISTRAL_API_KEY) || ownUrl("https://api.mistral.ai/v1");
-    case "cerebras":
-      return own(entry.environment?.CEREBRAS_API_KEY) || ownUrl("https://api.cerebras.ai/v1");
-    case "groq":
-      return own(entry.environment?.GROQ_API_KEY) || ownUrl("https://api.groq.com/openai/v1", cfg.groq?.url);
-    case "meta":
-      return own(entry.environment?.META_API_KEY) || ownUrl("https://api.meta.ai/v1", cfg.meta?.url);
-    case "grok":
-      return own(entry.environment?.XAI_API_KEY) || (own(config.apiKeyEnv) && config.apiKeyEnv !== "XAI_API_KEY")
-        || ownUrl("https://api.x.ai/v1", cfg.xai?.url);
     default:
       return false;
   }
 }
 
 /** The credential env instanceConfigs() injects for one driver at runtime.
- * Each secret goes only to the driver that actually reads it: the API-key
- * Grok driver reads XAI_API_KEY and OpenCode reads OPENCODE_API_KEY. Every
- * other engine brings its own login, so handing it a key it never uses would
- * only put that key in the environment of an unrelated child process. The
- * Boat token reaches no engine at all: the harness alone talks to Boat. */
+ * Each secret goes only to the driver that actually reads it: OpenCode reads
+ * OPENCODE_API_KEY. Every other engine brings its own login, so handing it a
+ * key it never uses would only put that key in the environment of an
+ * unrelated child process. The Boat token reaches no engine at all: the
+ * harness alone talks to Boat. xAI's key stays workspace-only for TTS and
+ * avatar image generation — no agent driver receives it. */
 function injectedEnvironment(cfg: AppConfig, instanceId: string, driver: string): Map<string, string> {
   const environment = new Map<string, string>();
-  if (driver === "mistral" && cfg.mistral?.key) environment.set("MISTRAL_API_KEY", cfg.mistral.key);
-  if (driver === "cerebras" && cfg.cerebras?.key) environment.set("CEREBRAS_API_KEY", cfg.cerebras.key);
-  if (driver === "groq" && cfg.groq?.key) environment.set("GROQ_API_KEY", cfg.groq.key);
-  if (driver === "meta" && cfg.meta?.key) environment.set("META_API_KEY", cfg.meta.key);
-  if (driver === "grok" && cfg.xai?.key) environment.set("XAI_API_KEY", cfg.xai.key);
   // The workspace Anthropic key reaches Claude Code as the variable it
   // reads, carried in the instance environment so the driver can tell a
   // deliberate workspace key from one riding along in the parent's env.
@@ -1727,7 +1677,6 @@ function injectedEnvironment(cfg: AppConfig, instanceId: string, driver: string)
  * is saved (unavailable without one). */
 export const OPENAI_API_INSTANCE = "openai";
 export const OPENROUTER_API_INSTANCE = "openrouter";
-export const XAI_API_INSTANCE = "xaiApi";
 export const CLAUDE_API_INSTANCE = "claudeApi";
 const API_KEY_FLEET: InstanceConfigMap = {
   [OPENAI_API_INSTANCE]: {
@@ -1738,7 +1687,6 @@ const API_KEY_FLEET: InstanceConfigMap = {
     driver: "claudeAgent", displayName: "Claude (API key)", access: "api", icon: { kind: "preset", preset: "anthropic" },
     config: { requireApiKey: true },
   },
-  [XAI_API_INSTANCE]: { driver: "grok", displayName: "xAI", access: "api", icon: { kind: "preset", preset: "xai" } },
   [OPENROUTER_API_INSTANCE]: {
     driver: "openai-compat", displayName: "OpenRouter", access: "api", icon: { kind: "preset", preset: "openrouter" },
     config: { url: "https://openrouter.ai/api/v1", apiKeyEnv: "OMB_OPENROUTER_API_KEY" },
@@ -1751,60 +1699,27 @@ const API_KEY_FLEET: InstanceConfigMap = {
 // see them without needing real process env vars — but only into the
 // driver that consumes each key (injectedEnvironment above).
 export function instanceConfigs(cfg: AppConfig): InstanceConfigMap {
-  // The default `grok` instance rides the `grokAgent` driver, not the API-key
-  // one: like claude and codex it needs no credential from us, just the CLI
-  // installed and logged in (it shows up unavailable otherwise). The API-key
-  // `grok` driver stays registered but out of the default fleet — that key is
-  // a credential Milind doesn't want to manage; an `instances` entry brings
-  // it back anytime.
-  //
-  // Google rides `antigravityAgent` (the official Google ACP server), not
-  // `geminiAgent`:
-  // Google retired Gemini CLI for the free/Pro/Ultra tiers on 2026-06-18
-  // (developers.googleblog.com, "transitioning Gemini CLI to Antigravity
-  // CLI"), so a default `gemini` instance could only ever show unavailable.
-  // The driver stays registered for enterprise licences, which keep Gemini
-  // CLI — `{"instances": {"gemini": {"driver": "geminiAgent"}}}` restores it.
   const DEFAULT_FLEET: InstanceConfigMap = {
-    grok: { driver: "grokAgent" },
     kimi: { driver: "kimiAgent" },
-    droid: { driver: "droidAgent" },
     cursor: { driver: "cursorAgent" },
     claude: { driver: "claudeAgent" },
     codex: { driver: "codex" },
     chatgpt: { driver: "codex", displayName: "ChatGPT plan", config: { authMode: "chatgpt-plan" } },
-    antigravity: { driver: "antigravityAgent" },
     opencodeGo: { driver: "opencodeGo" },
     openaiCompat: { driver: "openai-compat" },
-    mistral: { driver: "mistral" },
-    cerebras: { driver: "cerebras" },
-    groq: { driver: "groq" },
-    meta: { driver: "meta" },
-    museCode: { driver: "museCode" },
     ...API_KEY_FLEET,
     qwen: { driver: "qwenAgent" },
-    hermes: { driver: "hermesAgent" },
-    cline: { driver: "clineAgent" },
-    pi: { driver: "piAgent" },
   };
   const CUSTOM_ONLY = {
     qwen: { driver: "qwenAgent" },
-    hermes: { driver: "hermesAgent" },
-    cline: { driver: "clineAgent" },
-    pi: { driver: "piAgent" },
   } as const;
   // New default-fleet engines that existing product configs would otherwise
   // never see. Custom-only engines stay in CUSTOM_ONLY so a one-off test map
-  // is not expanded, matching the claude/grok/codex product-fleet probe.
+  // is not expanded, matching the claude/codex/kimi/cursor product-fleet probe.
   const PRODUCT_FLEET_ADDITIONS = {
     chatgpt: { driver: "codex", displayName: "ChatGPT plan", config: { authMode: "chatgpt-plan" } },
     cursor: { driver: "cursorAgent" },
     openaiCompat: { driver: "openai-compat" },
-    mistral: { driver: "mistral" },
-    cerebras: { driver: "cerebras" },
-    groq: { driver: "groq" },
-    meta: { driver: "meta" },
-    museCode: { driver: "museCode" },
     ...API_KEY_FLEET,
     ...CUSTOM_ONLY,
   } as const;
@@ -1812,10 +1727,11 @@ export function instanceConfigs(cfg: AppConfig): InstanceConfigMap {
   // A fleet saved before the Computer engine was removed may still name it.
   const map: InstanceConfigMap = withoutComputerEngine(configured ? { ...configured } : { ...DEFAULT_FLEET });
   // Product fleets pick up newly shipped engines. A one-off test/shadow map
-  // (no claude/grok/codex) is left exactly as written.
+  // (no claude/codex/kimi/cursor) is left exactly as written.
   if (
     configured &&
-    (Object.hasOwn(configured, "claude") || Object.hasOwn(configured, "grok") || Object.hasOwn(configured, "codex"))
+    (Object.hasOwn(configured, "claude") || Object.hasOwn(configured, "codex")
+      || Object.hasOwn(configured, "kimi") || Object.hasOwn(configured, "cursor"))
   ) {
     for (const [id, entry] of Object.entries(PRODUCT_FLEET_ADDITIONS)) {
       if (!Object.hasOwn(map, id)) map[id] = { ...entry };
@@ -1855,12 +1771,6 @@ export function instanceConfigs(cfg: AppConfig): InstanceConfigMap {
       for (const [key, value] of injectedEnvironment(cfg, id, entry.driver)) environment[key] = value;
     }
     entry.environment = environment;
-    if (entry.driver === "groq" && cfg.groq?.url && !ownsRouting) {
-      entry.config = { ...entry.config as object, url: cfg.groq.url };
-    }
-    if (entry.driver === "meta" && cfg.meta?.url && !ownsRouting) {
-      entry.config = { ...entry.config as object, url: cfg.meta.url };
-    }
     // The driver URL is configuration, not a credential. Environment is
     // intentionally not consulted by ProviderRegistry when it decodes a
     // driver's config, so carry the workspace default into the transient

@@ -4,14 +4,11 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { applyDroidLocalAuthEnv, DroidAgentDriver, ensureDroidInjectModel } from "./acp/droid.ts";
-import { ensureGrokInjectSlug, GrokAgentDriver } from "./acp/grok.ts";
 import { applyKimiLocalModelEnv, ensureKimiInjectAlias, KimiAgentDriver } from "./acp/kimi.ts";
 import { ensureOpenCodeInjectModel } from "./acp/opencode-go.ts";
 
 const FAKE_ACP = join(dirname(fileURLToPath(import.meta.url)), "..", "testing", "fake-acp-cli.ts");
 import { recordEvents } from "../testing/events.ts";
-import { ensureHermesInjectProvider } from "./acp/hermes.ts";
 import { ensureQwenInjectModel } from "./acp/qwen.ts";
 import {
   applyClaudeInject,
@@ -297,73 +294,6 @@ describe("codexLocalProviderArgs", () => {
   });
 });
 
-describe("ensureGrokInjectSlug", () => {
-  it("writes a config block the first time and reuses it after", () => {
-    const home = mkdtempSync(join(tmpdir(), "omb-grok-inject-"));
-    scratchDirs.push(home);
-    mkdirSync(join(home, ".grok"), { recursive: true });
-    writeFileSync(join(home, ".grok", "config.toml"), "[cli]\nchannel = \"alpha\"\n");
-    const first = ensureGrokInjectSlug("omlx::GLM-5.2-fp8", { HOME: home });
-    const again = ensureGrokInjectSlug("omlx::GLM-5.2-fp8", { HOME: home });
-    expect(first).toBe(again);
-    const text = readFileSync(join(home, ".grok", "config.toml"), "utf8");
-    expect(text).toContain(`model = "GLM-5.2-fp8"`);
-    expect(text).toContain(`base_url = "http://127.0.0.1:8080/v1"`);
-  });
-
-  it("writes the resolved Unsloth credential instead of a placeholder", () => {
-    const home = mkdtempSync(join(tmpdir(), "omb-grok-unsloth-"));
-    scratchDirs.push(home);
-    mkdirSync(join(home, ".grok"), { recursive: true });
-    ensureGrokInjectSlug("unsloth::local-model", {
-      HOME: home,
-      UNSLOTH_STUDIO_AUTH_TOKEN: "unsloth-secret",
-    });
-    const text = readFileSync(join(home, ".grok", "config.toml"), "utf8");
-    expect(text).toContain(`api_key = "unsloth-secret"`);
-  });
-
-  it("puts the resolved oMLX slug after agent on the Grok child argv", async () => {
-    const home = mkdtempSync(join(tmpdir(), "omb-grok-argv-"));
-    scratchDirs.push(home);
-    mkdirSync(join(home, ".grok"), { recursive: true });
-    const dump = join(home, "dump.json");
-    const instance = await GrokAgentDriver.create({
-      instanceId: "grok-omlx-argv",
-      displayName: "Grok",
-      environment: { HOME: home, USERPROFILE: home, FAKE_ACP_DUMP: dump },
-      enabled: true,
-      config: { cli: FAKE_ACP, fullAuto: false },
-    });
-    const recorder = recordEvents(instance.adapter);
-    try {
-      await instance.adapter.sendTurn({
-        threadId: "t-omlx",
-        text: "hi",
-        model: "omlx::GLM-5.2-fp8",
-      });
-      await recorder.until((e) => e.type === "turn.completed");
-      const argv = JSON.parse(readFileSync(dump, "utf8")).argv as string[];
-      const agent = argv.indexOf("agent");
-      const modelFlag = argv.indexOf("-m");
-      expect(agent).toBeGreaterThan(-1);
-      expect(modelFlag).toBeGreaterThan(agent);
-      expect(argv.indexOf("stdio")).toBeGreaterThan(modelFlag);
-      expect(argv[modelFlag + 1]).toBe("omlx-glm-5.2-fp8");
-      const configCalls = JSON.parse(readFileSync(`${dump}.config.json`, "utf8")) as Array<{
-        method: string;
-        params: { modelId?: string };
-      }>;
-      expect(configCalls).toContainEqual({
-        method: "session/set_model",
-        params: { sessionId: "fake-acp-session", modelId: "omlx-glm-5.2-fp8" },
-      });
-      expect(readFileSync(join(home, ".grok", "config.toml"), "utf8")).toContain(`model = "GLM-5.2-fp8"`);
-    } finally {
-      await instance.dispose();
-    }
-  });
-});
 
 describe("ensureKimiInjectAlias", () => {
   it("writes an openai_legacy provider and model alias without touching hooks", () => {
@@ -746,115 +676,7 @@ describe("applyKimiLocalModelEnv", () => {
   });
 });
 
-describe("ensureDroidInjectModel", () => {
-  it("upserts a generic-chat-completion BYOK row and reuses it", () => {
-    const home = mkdtempSync(join(tmpdir(), "omb-droid-inject-"));
-    scratchDirs.push(home);
-    mkdirSync(join(home, ".factory"), { recursive: true });
-    writeFileSync(join(home, ".factory", "settings.json"), JSON.stringify({ hooks: { Stop: [] } }));
-    const first = ensureDroidInjectModel("omlx::MiniMax-M3-4bit", { HOME: home });
-    const again = ensureDroidInjectModel("omlx::MiniMax-M3-4bit", { HOME: home });
-    expect(first).toBe("custom:openmausbot-omlx-MiniMax-M3-4bit");
-    expect(again).toBe(first);
-    const settings = JSON.parse(readFileSync(join(home, ".factory", "settings.json"), "utf8")) as {
-      hooks: unknown;
-      customModels: Array<{ id: string; model: string; baseUrl: string; provider: string }>;
-    };
-    expect(settings.hooks).toEqual({ Stop: [] });
-    expect(settings.customModels).toHaveLength(1);
-    expect(settings.customModels[0]).toMatchObject({
-      id: first,
-      model: "MiniMax-M3-4bit",
-      baseUrl: "http://127.0.0.1:8080/v1",
-      provider: "generic-chat-completion-api",
-    });
-  });
 
-  it("persists a generated id onto a matching customModels row that has none", () => {
-    const home = mkdtempSync(join(tmpdir(), "omb-droid-inject-noid-"));
-    scratchDirs.push(home);
-    mkdirSync(join(home, ".factory"), { recursive: true });
-    writeFileSync(
-      join(home, ".factory", "settings.json"),
-      JSON.stringify({
-        customModels: [{ model: "MiniMax-M3-4bit", baseUrl: "http://127.0.0.1:8080/v1", displayName: "local" }],
-      }),
-    );
-    const id = ensureDroidInjectModel("omlx::MiniMax-M3-4bit", { HOME: home });
-    const settings = JSON.parse(readFileSync(join(home, ".factory", "settings.json"), "utf8")) as {
-      customModels: Array<{ id?: string; model: string }>;
-    };
-    expect(id).toBe("custom:openmausbot-omlx-MiniMax-M3-4bit");
-    expect(settings.customModels).toHaveLength(1);
-    expect(settings.customModels[0]?.id).toBe(id);
-  });
-});
-
-describe("applyDroidLocalAuthEnv", () => {
-  it("fills a placeholder Factory key only for a local inject pick", () => {
-    const env: Record<string, string | undefined> = {};
-    applyDroidLocalAuthEnv(env, "ollama::ornith:35b-bf16");
-    expect(env.FACTORY_API_KEY).toBe("openmausbot-local");
-    applyDroidLocalAuthEnv(env, "ollama::ornith:35b-bf16");
-    expect(env.FACTORY_API_KEY).toBe("openmausbot-local");
-  });
-
-  it("leaves a real Factory key and cloud slugs alone", () => {
-    const kept: Record<string, string | undefined> = { FACTORY_API_KEY: "fk-real" };
-    applyDroidLocalAuthEnv(kept, "ollama::ornith:35b-bf16");
-    expect(kept.FACTORY_API_KEY).toBe("fk-real");
-    const cloud: Record<string, string | undefined> = {};
-    applyDroidLocalAuthEnv(cloud, "claude-opus-5");
-    applyDroidLocalAuthEnv(cloud, undefined);
-    expect(cloud.FACTORY_API_KEY).toBeUndefined();
-  });
-
-  it("does not invent a Factory key when a Droid auth file already exists", () => {
-    const home = mkdtempSync(join(tmpdir(), "omb-droid-authfile-"));
-    scratchDirs.push(home);
-    mkdirSync(join(home, ".factory"), { recursive: true });
-    writeFileSync(join(home, ".factory", "auth.v2.file"), "signed-in");
-    const env: Record<string, string | undefined> = { FACTORY_HOME_OVERRIDE: home };
-    applyDroidLocalAuthEnv(env, "ollama::ornith:35b-bf16");
-    expect(env).toEqual({ FACTORY_HOME_OVERRIDE: home });
-  });
-
-  it("puts the placeholder on the Droid child only for a local inject pick", async () => {
-    const home = mkdtempSync(join(tmpdir(), "omb-droid-overlay-"));
-    scratchDirs.push(home);
-    mkdirSync(join(home, ".factory"), { recursive: true });
-    const dump = join(home, "dump.json");
-    const instance = await DroidAgentDriver.create({
-      instanceId: "droid-overlay",
-      displayName: "Droid",
-      environment: { HOME: home, FACTORY_HOME_OVERRIDE: home, FAKE_ACP_DUMP: dump, FACTORY_API_KEY: "" },
-      enabled: true,
-      config: { cli: FAKE_ACP, fullAuto: false },
-    });
-    const recorder = recordEvents(instance.adapter);
-    try {
-      await instance.adapter.sendTurn({
-        threadId: "t-inject",
-        text: "hi",
-        model: "ollama::ornith:35b-bf16",
-      });
-      await recorder.until((e) => e.type === "turn.completed");
-      expect(JSON.parse(readFileSync(dump, "utf8")).env.FACTORY_API_KEY).toBe("openmausbot-local");
-
-      await instance.adapter.sendTurn({
-        threadId: "t-cloud",
-        text: "hi",
-        model: "claude-opus-5",
-      });
-      await recorder.until((e) => e.type === "turn.completed" && e.threadId === "t-cloud");
-      expect(JSON.parse(readFileSync(dump, "utf8")).env.FACTORY_API_KEY).not.toBe(
-        "openmausbot-local",
-      );
-    } finally {
-      await instance.dispose();
-    }
-  });
-});
 
 describe("ensureOpenCodeInjectModel", () => {
   it("merges a host provider into opencode.json without dropping existing models", () => {
@@ -899,51 +721,6 @@ describe("ensureOpenCodeInjectModel", () => {
   });
 });
 
-describe("ensureHermesInjectProvider", () => {
-  it("writes a named custom provider and returns the ACP model id", () => {
-    const home = mkdtempSync(join(tmpdir(), "omb-hermes-inject-"));
-    scratchDirs.push(home);
-    mkdirSync(join(home, ".hermes"), { recursive: true });
-    writeFileSync(join(home, ".hermes", "config.yaml"), "model:\n  provider: auto\n  base_url: https://openrouter.ai/api/v1\n");
-    const native = ensureHermesInjectProvider("omlx::gemma-4-31b-it-bf16", { HOME: home });
-    expect(native).toBe("custom:omlx:gemma-4-31b-it-bf16");
-    const again = ensureHermesInjectProvider("omlx::gemma-4-31b-it-bf16", { HOME: home });
-    expect(again).toBe(native);
-    const text = readFileSync(join(home, ".hermes", "config.yaml"), "utf8");
-    expect(text).toContain("provider: auto");
-    expect(text).toContain("https://openrouter.ai/api/v1");
-    expect(text.match(/^  omlx:$/gm)?.length).toBe(1);
-    expect(text).toContain("base_url: http://127.0.0.1:8080/v1");
-    expect(text).toContain("api_key: omlx");
-  });
-
-  it("replaces a nested provider block without leaving orphan YAML lines", () => {
-    const home = mkdtempSync(join(tmpdir(), "omb-hermes-nested-"));
-    scratchDirs.push(home);
-    mkdirSync(join(home, ".hermes"), { recursive: true });
-    writeFileSync(
-      join(home, ".hermes", "config.yaml"),
-      [
-        "providers:",
-        "  omlx:",
-        "    base_url: http://old",
-        "    extras:",
-        "      nested: keep-sibling-not-this",
-        "    api_key: old",
-        "  other:",
-        "    base_url: http://other",
-        "",
-      ].join("\n"),
-    );
-    ensureHermesInjectProvider("omlx::gemma-4-31b-it-bf16", { HOME: home });
-    const text = readFileSync(join(home, ".hermes", "config.yaml"), "utf8");
-    expect(text).toContain("  other:\n    base_url: http://other");
-    expect(text).toContain("base_url: http://127.0.0.1:8080/v1");
-    expect(text).not.toContain("nested: keep-sibling-not-this");
-    expect(text).not.toContain("http://old");
-    expect(text.match(/^  omlx:$/gm)?.length).toBe(1);
-  });
-});
 
 describe("ensureQwenInjectModel", () => {
   it("upserts an OpenAI-compatible provider without dropping existing rows", () => {
@@ -985,7 +762,7 @@ describe("ensureQwenInjectModel", () => {
 });
 
 describe("live Custom lists on every local CLI harness", () => {
-  it("merges probed host models onto Kimi and Droid", async () => {
+  it("merges probed host models onto Kimi", async () => {
     const previous = globalThis.fetch;
     globalThis.fetch = (async (url: string | URL) => {
       if (String(url).includes(":8080")) {
@@ -1002,15 +779,6 @@ describe("live Custom lists on every local CLI harness", () => {
         await KimiAgentDriver.create({
           instanceId: "kimi",
           displayName: "Kimi",
-          environment,
-          enabled: true,
-          config: { cli: FAKE_ACP, fullAuto: false },
-        }),
-      );
-      instances.push(
-        await DroidAgentDriver.create({
-          instanceId: "droid",
-          displayName: "Droid",
           environment,
           enabled: true,
           config: { cli: FAKE_ACP, fullAuto: false },

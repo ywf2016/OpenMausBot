@@ -6,9 +6,8 @@ import { cn } from "@/lib/cn";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ChatGptPlanStatus } from "./ChatGptPlanStatus";
 
-export function AddProviderAccount({ antigravityInstanceId }: { antigravityInstanceId?: string } = {}) {
-  const antigravity = antigravityInstanceId !== undefined;
-  const label = t(antigravity ? "engineSetup.antigravity.addAccount" : "engineSetup.chatgpt.addAccount");
+export function AddProviderAccount() {
+  const label = t("engineSetup.chatgpt.addAccount");
   const { dispatch } = useStore();
   const [open, setOpen] = useState(false);
   const [displayName, setDisplayName] = useState("");
@@ -20,7 +19,7 @@ export function AddProviderAccount({ antigravityInstanceId }: { antigravityInsta
     setSaving(true);
     setError(null);
     try {
-      const { instances } = await api(`/api/instances/${antigravity ? "antigravity" : "chatgpt"}-accounts`, { method: "POST", body: JSON.stringify({ displayName: displayName.trim(), ...(antigravity ? { sourceInstanceId: antigravityInstanceId } : {}) }) });
+      const { instances } = await api("/api/instances/chatgpt-accounts", { method: "POST", body: JSON.stringify({ displayName: displayName.trim() }) });
       dispatch({ type: "instances", instances });
       setOpen(false);
       setDisplayName("");
@@ -36,7 +35,7 @@ export function AddProviderAccount({ antigravityInstanceId }: { antigravityInsta
       {t("engines.account.name")}
       <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder={t("engines.account.namePlaceholder")} maxLength={80} required disabled={saving} className="rounded-lg border border-hairline/40 bg-inset px-3 py-2 text-[13px] text-ink outline-none focus:border-accent disabled:opacity-50" />
     </label>
-    <p className="text-[12px] text-ink-secondary">{t(antigravity ? "engineSetup.antigravity.addAccountHint" : "engineSetup.chatgpt.addAccountHint")}</p>
+    <p className="text-[12px] text-ink-secondary">{t("engineSetup.chatgpt.addAccountHint")}</p>
     {error && <p role="alert" className="text-[12px] text-danger">{error}</p>}
     <div className="flex justify-end gap-2">
       <button type="button" onClick={() => setOpen(false)} disabled={saving} className="rounded-lg px-3 py-1.5 text-[12px] text-ink-secondary hover:bg-raised/50 disabled:opacity-50">{t("common.cancel")}</button>

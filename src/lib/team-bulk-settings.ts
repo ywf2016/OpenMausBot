@@ -52,10 +52,9 @@ export function teamBots(bots: readonly Bot[], team: string): Bot[] {
 const engineOf = (bot: Bot, instances: readonly InstanceInfo[]) =>
   instances.find((instance) => instance.instanceId === bot.modelSelection.instanceId);
 
-/** Whether this engine's own picker offers the level (approvalModeOptionsFor):
- * Antigravity's explicit grant replaces Auto there, so Auto is not offered. */
+/** Whether this engine's own picker offers the level (approvalModeOptionsFor). */
 export function teamModeOffered(driverKind: string | undefined, mode: TeamApprovalMode): boolean {
-  return supportsApprovalMode(driverKind, mode) && !(driverKind === "antigravityAgent" && mode === "auto");
+  return supportsApprovalMode(driverKind, mode);
 }
 
 /** Every model any of these bots' engines offers, each once, with the

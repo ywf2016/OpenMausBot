@@ -14,9 +14,6 @@ import { removeTempDir } from "../../testing/cleanup.ts";
 import { recordEvents } from "../../testing/events.ts";
 import type { AcpConfig } from "./core.ts";
 import { CustomAcpDriver } from "./custom.ts";
-import { DroidAgentDriver } from "./droid.ts";
-import { GeminiAgentDriver } from "./gemini.ts";
-import { HermesAgentDriver } from "./hermes.ts";
 import { KimiAgentDriver } from "./kimi.ts";
 import { createOpenCodeDriver, openCodeOwnedDirectories } from "./opencode-go.ts";
 import { QwenAgentDriver } from "./qwen.ts";
@@ -39,11 +36,8 @@ describe("remaining ACP approval mappings", () => {
     native?: Partial<Record<ApprovalMode, string[]>>;
   }[] = [
     { driver: OpenCodeDriver, argv: ["acp"] },
-    { driver: GeminiAgentDriver, argv: ["--acp"], native: { full: ["--yolo"] } },
     { driver: QwenAgentDriver, argv: ["--acp"], native: { full: ["--yolo"], auto: ["--approval-mode", "auto"] } },
     { driver: KimiAgentDriver, argv: ["acp"] },
-    { driver: HermesAgentDriver, argv: ["acp"] },
-    { driver: DroidAgentDriver, argv: ["exec", "-o", "acp"] },
     { driver: CustomAcpDriver, argv: [] },
   ];
   it.each(cases)("$driver.driverKind preserves residual requests across Full → Auto → Ask", async ({ driver, argv, native }) => {
@@ -58,7 +52,6 @@ describe("remaining ACP approval mappings", () => {
       environment: {
         HOME: scratch,
         USERPROFILE: scratch,
-        HERMES_HOME: join(scratch, ".hermes"),
         KIMI_CODE_HOME: join(scratch, ".kimi"),
         OPENMAUSBOT_PROBE_LOCAL_INJECT: "0",
         FAKE_ACP_MODE: "permission",
@@ -121,13 +114,6 @@ describe("remaining ACP approval mappings", () => {
           expect(turnMethods).toContain("session/prompt");
           expect(turnMethods).not.toContain("session/new");
           expect(turnMethods).not.toContain("session/load");
-        }
-        if (driver === DroidAgentDriver) {
-          const settings = JSON.parse(readFileSync(`${dump}.config.json`, "utf8"));
-          expect(settings[0]).toEqual({
-            method: "session/set_mode",
-            params: { sessionId: "fake-acp-session", modeId: "normal" },
-          });
         }
         expect(await instance.adapter.respondToRequest("approval-matrix-thread", opened.requestId!, { behavior: "deny" }))
           .toBe("rejected");

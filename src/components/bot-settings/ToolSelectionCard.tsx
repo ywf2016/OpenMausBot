@@ -47,9 +47,7 @@ export function ToolSelectionCard({ bot, engineKind }: { bot: Bot; engineKind?: 
       if (alive.current) setSaving(false);
     }
   };
-  const example = engineKind === "piAgent" ? "native:read\nnative:edit\nnative:write"
-    : engineKind === "grokAgent" ? "native:read_file\nnative:search_replace\nnative:write"
-      : support === "mcp" ? "native:*\nmcp:mail:read_notes" : "native:ask_user\nmcp:mail:read_notes";
+  const example = support === "mcp" ? "native:*\nmcp:mail:read_notes" : "native:ask_user\nmcp:mail:read_notes";
 
   return <div className="rounded-xl bg-card p-4">
     <div className="text-[15px] font-medium text-ink">{t("botAccess.tools.title")}</div>
@@ -81,7 +79,6 @@ export function ToolSelectionCard({ bot, engineKind }: { bot: Bot; engineKind?: 
           placeholder="mcp:mail:send" value={fields.deny} onChange={event => change({ deny: event.target.value })} />
       </label>
       <p className="text-[12px] text-ink-secondary">{t("botAccess.tools.syntax")}</p>
-      {engineKind === "grokAgent" && <p className="text-[12px] text-ink-secondary">{t("botAccess.tools.grok")}</p>}
     </fieldset>}
     {unavailable && <p role="alert" className="mt-2 text-[12px] text-danger">
       {t(support === "mcp" ? "botAccess.tools.nativeUnsupported" : "botAccess.tools.unsupported")}

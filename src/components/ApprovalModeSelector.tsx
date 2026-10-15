@@ -51,23 +51,10 @@ export function approvalModeOptions(): ApprovalModeOption[] {
 export function approvalModeOptionsFor(driverKind: string, trustedModesAvailable = true) {
   return approvalModeOptions()
     .filter((option) => supportsApprovalMode(driverKind, option.mode)
-      // Antigravity has no native reviewer. Offer its explicit full-access
-      // grant as Auto instead of a second choice that actually behaves as Ask.
-      && (driverKind !== "antigravityAgent" || option.mode !== "auto")
       && (trustedModesAvailable || option.mode !== "custom"))
-    .map((option) => {
-      if (driverKind === "antigravityAgent" && option.mode === "full") {
-        return {
-          ...option,
-          label: t("approvalMode.antigravity.label"),
-          chip: t("approvalMode.auto.chip"),
-          description: t("approvalMode.antigravity.desc"),
-        };
-      }
-      return option.mode === "auto" && !hasNativeAutoReview(driverKind)
-        ? { ...option, description: t("approvalMode.noNativeReview") }
-        : option;
-    });
+    .map((option) => option.mode === "auto" && !hasNativeAutoReview(driverKind)
+      ? { ...option, description: t("approvalMode.noNativeReview") }
+      : option);
 }
 
 export function approvalModeSelectionRequiresLocalDesktop(
@@ -116,10 +103,7 @@ export function ApprovalModeSelector({
   const motion = useMenuMotion(open);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const savedMode = approvalModeFor({ approvalMode, autoApprove });
-  // Old Antigravity Auto settings still ask. Do not display or silently grant
-  // the new Auto/full-access behavior until the user explicitly selects it.
-  const mode = driverKind === "antigravityAgent" && savedMode === "auto" ? "ask" : savedMode;
+  const mode = approvalModeFor({ approvalMode, autoApprove });
   const allOptions = approvalModeOptions();
   const current = approvalModeOptionsFor(driverKind).find((option) => option.mode === mode)
     ?? allOptions.find((option) => option.mode === mode)

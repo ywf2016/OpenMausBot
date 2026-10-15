@@ -28,8 +28,8 @@ import type { MausMotion, MausState } from "@/lib/mascot";
 import { withViewTransition } from "@/components/onboarding/view-transition";
 import { useStore, type InstanceInfo } from "@/state/store";
 
-type Choice = "claude" | "codex" | "grok";
-type ChoiceKind = "claudeAgent" | "codex" | "grokAgent";
+type Choice = "claude" | "codex";
+type ChoiceKind = "claudeAgent" | "codex";
 
 /** The person's own engine of that kind: not a local-model or read-only one. */
 export function cloudEngine(instances: readonly InstanceInfo[], driverKind: ChoiceKind): InstanceInfo | undefined {
@@ -75,10 +75,6 @@ export function CloudEngineSignIn() {
   const choices: Array<{ id: Choice; driverKind: ChoiceKind; label: string; hint: string }> = [
     { id: "claude", driverKind: "claudeAgent", label: t("cloudSignIn.claude"), hint: t("cloudSignIn.claudeHint") },
     { id: "codex", driverKind: "codex", label: t("cloudSignIn.codex"), hint: t("cloudSignIn.codexHint") },
-    // Grok Build needs its CLI on this Cloud computer; an older image has none.
-    ...(cloudEngine(state.instances, "grokAgent")?.snapshot.state === "available"
-      ? [{ id: "grok" as const, driverKind: "grokAgent" as const, label: t("cloudSignIn.grok"), hint: t("cloudSignIn.grokHint") }]
-      : []),
   ];
   // The guide looks around while the Cloud answers, listens once a way in is
   // open, and is proud the moment it connects.

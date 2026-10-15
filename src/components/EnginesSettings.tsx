@@ -16,7 +16,6 @@ import { ApiKeyEngineManage, EngineSetup, EngineUpdateNotice, EngineWarningNotic
 import { AddClaudeAccount, ClaudeAccountSettings } from "./ClaudeAccountSettings";
 import { AddProviderAccount, CodexAccountSettings } from "./CodexAccountSettings";
 import { DEVICE_SIGN_IN_COPY, deviceSignInProvider } from "./DeviceSignIn";
-import { AntigravityFreeSpace } from "./AntigravityFreeSpace";
 import { CacheKeepWarmSettings } from "./CacheKeepWarmSettings";
 
 interface ProbeResult {
@@ -284,13 +283,6 @@ function EngineRow({ instance }: { instance: InstanceInfo }) {
           : instance.authentication?.method === "paste-code" && !instance.claudeAccount && (
             <p className="flex items-center gap-1.5 text-[12px] text-success"><Check size={13} />{t("engineSetup.claude.connectedAccount")}</p>
           )
-      )}
-      {instance.freeUpSpace && <AntigravityFreeSpace instance={instance} />}
-      {instance.driverKind === "antigravityAgent" && (
-        <div className="mt-3 space-y-3">
-          {instance.snapshot.authenticated && <p className="break-words text-[12px] text-ink-secondary">{instance.snapshot.account?.email ?? t("engineSetup.antigravity.emailUnavailable")}</p>}
-          <AddProviderAccount antigravityInstanceId={instance.instanceId} />
-        </div>
       )}
       {instance.driverKind === "claudeAgent" && instance.access !== "custom" && (
         <div className="mt-3"><AddClaudeAccount /></div>

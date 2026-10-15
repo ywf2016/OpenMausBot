@@ -2,7 +2,6 @@
 // CLI keeps working), Edits and Auto name the mode, Full is --yolo.
 import { describe, expect, it } from "vitest";
 
-import { geminiApprovalArgs } from "./gemini.ts";
 import { qwenApprovalArgs } from "./qwen.ts";
 
 describe("qwenApprovalArgs", () => {
@@ -17,14 +16,5 @@ describe("qwenApprovalArgs", () => {
     // carrying no mode at all leaves the instance's stored flag standing.
     expect(qwenApprovalArgs(true, "ask")).toEqual(["--yolo"]);
     expect(qwenApprovalArgs(true, undefined)).toEqual(["--yolo"]);
-  });
-});
-
-describe("geminiApprovalArgs", () => {
-  it("passes Edits and Full through and leaves Auto as Ask (no reviewer)", () => {
-    expect(geminiApprovalArgs(false, "ask")).toEqual([]);
-    expect(geminiApprovalArgs(false, "auto")).toEqual([]);
-    expect(geminiApprovalArgs(false, "edits")).toEqual(["--approval-mode", "auto_edit"]);
-    expect(geminiApprovalArgs(true, "full")).toEqual(["--yolo"]);
   });
 });

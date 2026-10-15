@@ -1,6 +1,6 @@
 // ACP driver contract tests, run against the scripted fake ACP CLI in
 // server/testing/fake-acp-cli.ts. Covers the shared acp/core.ts runtime via
-// its two harness shims (grok = fail-closed auth, gemini = lenient auth):
+// its kept harness shims (kimi / cursor / qwen):
 // normalize the ACP handshake into canonical events, keep argv/env hygiene,
 // broker permission asks, and settle interrupts/crashes cleanly.
 //
@@ -20,10 +20,7 @@ import { TurnNotStartedError } from "../../contracts.ts";
 import { recordEvents, type EventRecorder } from "../../testing/events.ts";
 import { promptSplitFingerprints, writePromptSplitReceipt } from "../prompt-split.ts";
 import { createAcpDriver, DEFAULT_ACP_PROMPT_IDLE_MS, skipSubscriptionAuthForLocalInject, type AcpSupport } from "./core.ts";
-import { GrokAgentDriver, grokAcceptsUnadvertisedImages } from "./grok.ts";
-import { GeminiAgentDriver } from "./gemini.ts";
 import { KimiAgentDriver } from "./kimi.ts";
-import { DroidAgentDriver } from "./droid.ts";
 import { CursorAgentDriver } from "./cursor.ts";
 import { QwenAgentDriver } from "./qwen.ts";
 import { removeTempDir } from "../../testing/cleanup.ts";
@@ -136,12 +133,6 @@ describe("ACP decodeConfig", () => {
     });
     await instance.dispose();
   });
-  it("grok defaults to the grok binary", () => {
-    expect(GrokAgentDriver.decodeConfig({})).toEqual({ cli: "grok", fullAuto: false, workspace: undefined });
-  });
-  it("gemini defaults to the gemini binary", () => {
-    expect(GeminiAgentDriver.decodeConfig(undefined)).toEqual({ cli: "gemini", fullAuto: false, workspace: undefined });
-  });
   it("kimi defaults to the kimi binary and declares cross-platform setup", () => {
     expect(KimiAgentDriver.decodeConfig(undefined)).toEqual({ cli: "kimi", fullAuto: false, workspace: undefined });
     expect(KimiAgentDriver.install?.command).toMatchObject({
@@ -150,15 +141,6 @@ describe("ACP decodeConfig", () => {
       win32: expect.stringContaining("install.ps1"),
     });
     expect(KimiAgentDriver.install?.signInCommand).toBe("kimi login");
-  });
-  it("droid defaults to the droid binary and declares cross-platform setup", () => {
-    expect(DroidAgentDriver.decodeConfig(undefined)).toEqual({ cli: "droid", fullAuto: false, workspace: undefined });
-    expect(DroidAgentDriver.install?.command).toMatchObject({
-      darwin: expect.stringContaining("factory.ai/cli"),
-      linux: expect.stringContaining("factory.ai/cli"),
-      win32: expect.stringContaining("factory.ai/cli"),
-    });
-    expect(DroidAgentDriver.install?.signInCommand).toBe("droid");
   });
   it("cursor defaults to its unambiguous binary and declares cross-platform setup", () => {
     expect(CursorAgentDriver.decodeConfig(undefined)).toEqual({
@@ -174,14 +156,14 @@ describe("ACP decodeConfig", () => {
     expect(CursorAgentDriver.install?.signInCommand).toBe("cursor-agent login");
   });
   it("fullAuto only when explicitly true", () => {
-    expect(GrokAgentDriver.decodeConfig({ fullAuto: "yes" }).fullAuto).toBe(false);
-    expect(GrokAgentDriver.decodeConfig({ fullAuto: true }).fullAuto).toBe(true);
+    expect(KimiAgentDriver.decodeConfig({ fullAuto: "yes" }).fullAuto).toBe(false);
+    expect(KimiAgentDriver.decodeConfig({ fullAuto: true }).fullAuto).toBe(true);
   });
 
   it("advertises per-bot local CUA but rejects legacy full-auto turns without a mode", async () => {
-    const fullAuto = await GrokAgentDriver.create({
-      instanceId: "grok-full-auto",
-      displayName: "Grok Full Auto",
+    const fullAuto = await KimiAgentDriver.create({
+      instanceId: "kimi-full-auto",
+      displayName: "Kimi Full Auto",
       environment: {},
       enabled: true,
       config: { cli: FAKE_CLI, fullAuto: true },
@@ -211,7 +193,7 @@ describe("ACP turns (fake CLI)", () => {
   let recorder: EventRecorder;
   let scratch: string;
 
-  const create = async (driver = GrokAgentDriver, mode?: string) => {
+  const create = async (driver = KimiAgentDriver, mode?: string) => {
     if (mode) process.env.FAKE_ACP_MODE = mode;
     instance = await driver.create({
       instanceId: "acp-test",
@@ -264,7 +246,6 @@ describe("ACP turns (fake CLI)", () => {
     delete process.env.FAKE_ACP_LOAD_NULL;
     delete process.env.FAKE_ACP_REJECT_LIVE_LOAD_FILE;
     delete process.env.FAKE_ACP_IMAGE_CAPABILITY;
-    delete process.env.FAKE_ACP_GROK_VERSION;
     delete process.env.FAKE_ACP_TOOL_MS;
     delete process.env.FAKE_ACP_USAGE_UPDATES_FILE;
     delete process.env.FAKE_ACP_DUMP_PROMPT;
@@ -308,7 +289,7 @@ describe("ACP turns (fake CLI)", () => {
   });
 
   it("pairs an unkeyed tool call's lifecycle events on one stable itemId", async () => {
-    await create(GrokAgentDriver, "unkeyed-tool");
+    await create(KimiAgentDriver, "unkeyed-tool");
     const { turnId } = await instance.adapter.sendTurn({ threadId: "t-unkeyed-tool", text: "go" });
     await recorder.until((e) => e.type === "turn.completed" && e.turnId === turnId);
     const started = recorder.events.find((e) => e.type === "item.started" && e.itemType === "tool");
@@ -323,7 +304,7 @@ describe("ACP turns (fake CLI)", () => {
 
   it("normalizes a full turn into the canonical event sequence", async () => {
     await create();
-    const { turnId } = await instance.adapter.sendTurn({ threadId: "t-happy", text: "hi", model: "grok-4.5" });
+    const { turnId } = await instance.adapter.sendTurn({ threadId: "t-happy", text: "hi", model: "kimi-test" });
     await recorder.until((e) => e.type === "turn.completed");
 
     const types = recorder.events.map((e) => e.type);
@@ -337,7 +318,7 @@ describe("ACP turns (fake CLI)", () => {
       "thread.token-usage.updated",
       "turn.completed",
     ]);
-    expect(recorder.events.every((e) => e.turnId === turnId && e.provider === "grokAgent")).toBe(true);
+    expect(recorder.events.every((e) => e.turnId === turnId && e.provider === "kimiAgent")).toBe(true);
     expect(recorder.events.filter((event) => event.itemId === "tc-1")).toMatchObject([
       { type: "item.started", input: expect.stringContaining("/fixture/readme.md") },
       { type: "item.completed", output: expect.stringContaining("fixture file content") },
@@ -547,7 +528,7 @@ describe("ACP turns (fake CLI)", () => {
     const { threadId, usage, send } = await usageThread("legacy-receipt");
     // a legacy receipt has no lastUsed, so a low first reading is no collapse
     writePromptSplitReceipt(
-      "grokAgent",
+      "kimiAgent",
       JSON.stringify([threadId, "fake-acp-session"]),
       promptSplitFingerprints("Standing rules.", "Memory: likes quiet hours."),
     );
@@ -592,34 +573,9 @@ describe("ACP turns (fake CLI)", () => {
     expect(JSON.parse(readFileSync(`${dump}.prompt.json`, "utf8"))).toEqual([{ type: "text", text }]);
   });
 
-  it("sends native images on Grok's verified runtime even with the false capability", async () => {
-    const dump = join(scratch, "grok-image.json");
-    const imagePath = join(scratch, "grok.png");
-    const bytes = Buffer.from("synthetic-private-image");
-    writeFileSync(imagePath, bytes);
-    process.env.FAKE_ACP_DUMP = dump;
-    process.env.FAKE_ACP_DUMP_PROMPT = "1";
-    process.env.FAKE_ACP_GROK_VERSION = "1.0.25";
-    await create(GrokAgentDriver);
-    expect(instance.adapter.capabilities.images).toBe(true);
-    const { turnId } = await instance.adapter.sendTurn({
-      threadId: "t-grok-image", text: "Inspect", images: [{ path: imagePath, mime: "image/png", bytes: bytes.length }],
-    });
-    const done = await recorder.until((event) => event.type === "turn.completed" && event.turnId === turnId);
-    expect(done).toMatchObject({ ok: true });
-    expect(JSON.parse(readFileSync(`${dump}.prompt.json`, "utf8"))).toContainEqual({ type: "image", data: bytes.toString("base64"), mimeType: "image/png" });
-    expect(readFileSync(join(NATIVE_DIR, "t-grok-image.ndjson"), "utf8")).not.toContain(bytes.toString("base64"));
-  });
-
-  it.each([null, {}, { _meta: { grokShell: true, agentVersion: "1.0.24" } },
-    { _meta: { grokShell: true, agentVersion: "1.0.25-preview" } },
-    { _meta: { grokShell: false, agentVersion: "1.0.25" } }])("does not assume image support for unknown Grok runtime %j", (init) => {
-    expect(grokAcceptsUnadvertisedImages(init)).toBe(false);
-  });
-
   it("emits each assistant text block before the tool that follows it", async () => {
-    await create(GrokAgentDriver, "interleave");
-    await instance.adapter.sendTurn({ threadId: "t-interleave", text: "go", model: "grok-4.5" });
+    await create(KimiAgentDriver, "interleave");
+    await instance.adapter.sendTurn({ threadId: "t-interleave", text: "go", model: "kimi-test" });
     await recorder.until((e) => e.type === "turn.completed");
 
     const types = recorder.events.map((e) => e.type);
@@ -646,7 +602,7 @@ describe("ACP turns (fake CLI)", () => {
   });
 
   it("normalizes a structured ACP image block without treating it as text", async () => {
-    await create(GeminiAgentDriver, "image");
+    await create(KimiAgentDriver, "image");
     await instance.adapter.sendTurn({ threadId: "t-image", text: "draw it" });
     await recorder.until((event) => event.type === "turn.completed");
 
@@ -778,9 +734,7 @@ describe("ACP turns (fake CLI)", () => {
     await recorder.until((e) => e.type === "turn.completed");
 
     const seen = JSON.parse(readFileSync(dump, "utf8"));
-    expect(seen.argv).toContain("agent");
-    expect(seen.argv).toContain("stdio");
-    expect(seen.argv).toContain("--permission-mode");
+    expect(seen.argv).toEqual(["acp"]);
     expect(seen.env.XAI_API_KEY).toBeUndefined();
     expect(seen.env.OPENCODE_API_KEY).toBeUndefined();
     expect(seen.env.CLINE_API_KEY).toBeUndefined();
@@ -835,85 +789,6 @@ describe("ACP turns (fake CLI)", () => {
     }]);
     const prompt = JSON.parse(readFileSync(`${dump}.prompt.json`, "utf8")) as Array<{ type: string; text?: string }>;
     expect(prompt.find(block => block.type === "text")?.text).toContain(BUILT_IN_DATA_SYSTEM_PROMPT.trim());
-  });
-
-  it("droid takes model and autonomy over the wire, never through argv", async () => {
-    // `droid exec -m <id> -o acp` ignores the flag (verified against 0.196.0),
-    // so a model that only reached argv would silently run the CLI's own pick.
-    instance = await DroidAgentDriver.create({
-      instanceId: "droid-test",
-      displayName: "Droid Test",
-      environment: {},
-      enabled: true,
-      config: { cli: FAKE_CLI, fullAuto: true },
-    });
-    recorder = recordEvents(instance.adapter);
-    const dump = join(scratch, "droid-dump.json");
-    process.env.FAKE_ACP_DUMP = dump;
-
-    await instance.adapter.sendTurn({ threadId: "t-droid", text: "go", model: "claude-sonnet-5" });
-    await recorder.until((e) => e.type === "turn.completed");
-
-    const seen = JSON.parse(readFileSync(dump, "utf8"));
-    expect(seen.argv).toEqual(["exec", "-o", "acp"]);
-    expect(seen.argv).not.toContain("-m");
-
-    const applied = JSON.parse(readFileSync(`${dump}.config.json`, "utf8"));
-    expect(applied).toEqual([
-      { method: "session/set_mode", params: { sessionId: "fake-acp-session", modeId: "auto-high" } },
-      { method: "session/set_model", params: { sessionId: "fake-acp-session", modelId: "claude-sonnet-5" } },
-    ]);
-  });
-
-  it("droid pins read-only mode when fullAuto is off", async () => {
-    instance = await DroidAgentDriver.create({
-      instanceId: "droid-safe",
-      displayName: "Droid Safe",
-      environment: {},
-      enabled: true,
-      config: { cli: FAKE_CLI, fullAuto: false },
-    });
-    recorder = recordEvents(instance.adapter);
-    const dump = join(scratch, "droid-safe.json");
-    process.env.FAKE_ACP_DUMP = dump;
-
-    await instance.adapter.sendTurn({ threadId: "t-droid-safe", text: "go" });
-    await recorder.until((e) => e.type === "turn.completed");
-
-    // Both settings are explicit even with nothing on the turn: whatever
-    // ~/.factory/settings.json pinned (including a `custom:` provider with its
-    // own endpoint) must never be what the session silently runs on.
-    expect(JSON.parse(readFileSync(`${dump}.config.json`, "utf8"))).toEqual([
-      { method: "session/set_mode", params: { sessionId: "fake-acp-session", modeId: "normal" } },
-      { method: "session/set_model", params: { sessionId: "fake-acp-session", modelId: "claude-opus-5" } },
-    ]);
-  });
-
-  it("droid names the rejected setting when the agent predates session config", async () => {
-    // The realistic failure is version skew: an older droid answers -32601 to
-    // session/set_mode, and core surfaces the RPC message verbatim. A bare
-    // "method not found" tells the user nothing, so the driver wraps it.
-    process.env.FAKE_ACP_MODE = "no-session-config";
-    instance = await DroidAgentDriver.create({
-      instanceId: "droid-old-cli",
-      displayName: "Droid Old CLI",
-      environment: {},
-      enabled: true,
-      config: { cli: FAKE_CLI, fullAuto: false },
-    });
-    recorder = recordEvents(instance.adapter);
-
-    await instance.adapter.sendTurn({ threadId: "t-droid-skew", text: "go" });
-    const done = await recorder.until((e) => e.type === "turn.completed");
-
-    expect(done).toMatchObject({ ok: false, stopReason: "rpc_error" });
-    const err = recorder.events.find((e) => e.type === "runtime.error")!;
-    expect(err.message).toContain("session/set_mode");
-    expect(err.message).toContain('autonomy mode "normal"');
-    expect(err.message).toMatch(/`droid` is current/);
-    // The session id still reached the client, so the thread can resume rather
-    // than orphaning the session droid just created.
-    expect(recorder.events.some((e) => e.type === "session.started")).toBe(true);
   });
 
   it("mounts local CUA only on an approval-capable ACP instance", async () => {
@@ -1009,16 +884,16 @@ describe("ACP turns (fake CLI)", () => {
   });
 
   // A server that deserializes initialize strictly (a Voluum server:
-  // "Unrecognized field 'schemaValidation'") refuses grok 1.0.25's own
-  // handshake (capabilities.extensions). The fake agent connects each
-  // mounted server with that handshake, natively if it were handed a URL.
+  // "Unrecognized field 'schemaValidation'") refuses an agent handshake that
+  // sends capabilities.extensions. The fake agent connects each mounted
+  // server with that handshake, natively if it were handed a URL.
   it("lists a strict url server's tools through OpenMausBot's connector, even for an agent that speaks http", async () => {
     const strict = await startFakeHttpMcp({ strictInitialize: "http-400", strictSchema: "2025-11-25",
       tools: [{ name: "report", inputSchema: { type: "object" } }, { name: "campaigns", inputSchema: { type: "object" } }],
       requireHeader: { name: "Authorization", value: "Bearer tok-voluum" } });
     process.env.FAKE_ACP_MCP_TRANSPORTS = "http,sse";
     try {
-      await create(GrokAgentDriver, "mcp-tools");
+      await create(KimiAgentDriver, "mcp-tools");
       await instance.adapter.sendTurn({ threadId: "t-strict-acp", text: "go", integrations: { custom: {
         voluum: { type: "http", url: strict.url, headers: { Authorization: "Bearer tok-voluum" } },
       } } });
@@ -1035,8 +910,6 @@ describe("ACP turns (fake CLI)", () => {
   it("keeps a tool selection's gate in front of the connector", async () => {
     const strict = await startFakeHttpMcp({ strictInitialize: "http-400", tools: [{ name: "report", inputSchema: { type: "object" } }, { name: "campaigns", inputSchema: { type: "object" } }] });
     try {
-      // Kimi: Grok also checks its own catalog over _x.ai/mcp/list, which
-      // the fake does not keep
       await create(KimiAgentDriver, "mcp-tools");
       await instance.adapter.sendTurn({ threadId: "t-strict-acp-scoped", text: "go", toolScope: { allow: ["native:*", "mcp:voluum:report"] },
         integrations: { custom: { voluum: { type: "http", url: strict.url, headers: {} } } } });
@@ -1050,7 +923,7 @@ describe("ACP turns (fake CLI)", () => {
   });
 
   it("surfaces a permission ask as request.opened and completes once allowed", async () => {
-    await create(GrokAgentDriver, "permission");
+    await create(KimiAgentDriver, "permission");
     await instance.adapter.sendTurn({
       threadId: "t-perm",
       text: "go",
@@ -1094,7 +967,7 @@ describe("ACP turns (fake CLI)", () => {
     { name: "relative cwd", toolCall: { kind: "execute", rawInput: { command: "pwd", cwd: "unknown-relative-directory" } }, descriptor: false },
   ])("keeps command grants scoped to complete shell input: $name", async ({ toolCall, descriptor }) => {
     process.env.FAKE_ACP_PERMISSION_TOOL_CALL = JSON.stringify(toolCall);
-    await create(GrokAgentDriver, "permission");
+    await create(KimiAgentDriver, "permission");
     await instance.adapter.sendTurn({ threadId: "t-acp-command-descriptor", text: "go", cwd: scratch });
     const opened = await recorder.until((event) => event.type === "request.opened");
     expect(opened).toHaveProperty("command", descriptor ? { command: toolCall.rawInput?.command, cwd: realpathSync(scratch) } : undefined);
@@ -1106,7 +979,7 @@ describe("ACP turns (fake CLI)", () => {
     const command = "pwd";
     const directory = join(scratch, "execution-directory");
     process.env.FAKE_ACP_PERMISSION_TOOL_CALL = JSON.stringify({ kind: "execute", rawInput: { command, workdir: directory } });
-    await create(GrokAgentDriver, "permission");
+    await create(KimiAgentDriver, "permission");
     await instance.adapter.sendTurn({ threadId: "t-acp-explicit-cwd", text: "go", cwd: scratch });
     const opened = await recorder.until((event) => event.type === "request.opened");
     expect(opened).toHaveProperty("command", { command, cwd: directory });
@@ -1117,7 +990,7 @@ describe("ACP turns (fake CLI)", () => {
     await instance.dispose();
     recorder.stop();
     process.env.FAKE_ACP_PERMISSION_TOOL_CALL = JSON.stringify({ kind: "execute", rawInput: { command, cwd: scratch, workdir: directory } });
-    await create(GrokAgentDriver, "permission");
+    await create(KimiAgentDriver, "permission");
     await instance.adapter.sendTurn({ threadId: "t-acp-conflicting-cwd", text: "go", cwd: scratch });
     const conflict = await recorder.until((event) => event.type === "request.opened");
     expect(conflict).toHaveProperty("command", undefined);
@@ -1126,7 +999,7 @@ describe("ACP turns (fake CLI)", () => {
   });
 
   it("emits a structured question beside the flat choices", async () => {
-    await create(GrokAgentDriver, "question");
+    await create(KimiAgentDriver, "question");
     await instance.adapter.sendTurn({ threadId: "t-question-shape", text: "go" });
     const opened = await recorder.until((e) => e.type === "request.opened");
     expect(opened).toMatchObject({
@@ -1140,7 +1013,7 @@ describe("ACP turns (fake CLI)", () => {
   it("answers a structured card reply by recovering the picked option", async () => {
     const answer = join(scratch, "question-answer.txt");
     process.env.FAKE_ACP_PERMISSION_ANSWER = answer;
-    await create(GrokAgentDriver, "question");
+    await create(KimiAgentDriver, "question");
     await instance.adapter.sendTurn({ threadId: "t-question-answer", text: "go" });
     const opened = await recorder.until((e) => e.type === "request.opened");
     // Exactly what the tabbed QuestionCard submits: one Q:/A: block for the
@@ -1159,7 +1032,7 @@ describe("ACP turns (fake CLI)", () => {
   it("cancels a question whose answer matches no offered option", async () => {
     const answer = join(scratch, "question-cancel.txt");
     process.env.FAKE_ACP_PERMISSION_ANSWER = answer;
-    await create(GrokAgentDriver, "question");
+    await create(KimiAgentDriver, "question");
     await instance.adapter.sendTurn({ threadId: "t-question-cancel", text: "go" });
     const opened = await recorder.until((e) => e.type === "request.opened");
     await instance.adapter.respondToRequest("t-question-cancel", (opened as { requestId: string }).requestId, {
@@ -1176,14 +1049,14 @@ describe("ACP turns (fake CLI)", () => {
   });
 
   it("marks an ACP question as options-only, so the card offers no free text", async () => {
-    await create(GrokAgentDriver, "question");
+    await create(KimiAgentDriver, "question");
     await instance.adapter.sendTurn({ threadId: "t-question-custom", text: "go" });
     const opened = await recorder.until((e) => e.type === "request.opened");
     expect(opened).toMatchObject({ questions: [{ question: "Which color?", custom: false }] });
   });
 
-  // Antigravity's shape: options carry their own ids and names, and after a
-  // "cancelled" outcome the agent waits for session/cancel instead of going on.
+  // Option shape with own ids/names: after a "cancelled" outcome the agent
+  // waits for session/cancel instead of going on.
   it.each([
     { name: "a typed answer", response: { behavior: "answer", message: "The user answered your questions.\n\nQ: Which article?\nA: my own article" }, error: true },
     { name: "a closed question", response: { behavior: "deny" }, error: false },
@@ -1195,7 +1068,7 @@ describe("ACP turns (fake CLI)", () => {
     ]);
     const answer = join(scratch, "question-hold.txt");
     process.env.FAKE_ACP_PERMISSION_ANSWER = answer;
-    await create(GrokAgentDriver, "question");
+    await create(KimiAgentDriver, "question");
     await instance.adapter.sendTurn({ threadId: "t-question-hold", text: "go" });
     const opened = await recorder.until((e) => e.type === "request.opened");
     await instance.adapter.respondToRequest("t-question-hold", (opened as { requestId: string }).requestId, response as never);
@@ -1205,7 +1078,7 @@ describe("ACP turns (fake CLI)", () => {
     expect(recorder.events.some((e) => e.type === "runtime.error")).toBe(error);
   });
 
-  it("still sends the picked option id on Antigravity's option shape", async () => {
+  it("still sends the picked option id on an option shape with ids and names", async () => {
     process.env.FAKE_ACP_HOLD_ON_CANCELLED = "1";
     process.env.FAKE_ACP_QUESTION_OPTIONS = JSON.stringify([
       { optionId: "opt-0", kind: "allow_once", name: "Machines of Loving Grace (Recommended)" },
@@ -1213,7 +1086,7 @@ describe("ACP turns (fake CLI)", () => {
     ]);
     const answer = join(scratch, "question-pick.txt");
     process.env.FAKE_ACP_PERMISSION_ANSWER = answer;
-    await create(GrokAgentDriver, "question");
+    await create(KimiAgentDriver, "question");
     await instance.adapter.sendTurn({ threadId: "t-question-pick", text: "go" });
     const opened = await recorder.until((e) => e.type === "request.opened");
     expect(await instance.adapter.respondToRequest("t-question-pick", (opened as { requestId: string }).requestId, {
@@ -1233,7 +1106,7 @@ describe("ACP turns (fake CLI)", () => {
       { optionId: "green-id", kind: "allow_once", name: label },
       { optionId: "other-id", kind: "allow_once", name: collision ? label + "other" : "Blue" },
     ]);
-    await create(GrokAgentDriver, "question");
+    await create(KimiAgentDriver, "question");
     await instance.adapter.sendTurn({ threadId: "t-long-question", text: "go" });
     const opened = await recorder.until(e => e.type === "request.opened");
     expect(opened).toMatchObject({ choices: expect.arrayContaining([label.trim().slice(0, 120).trim()]) });
@@ -1245,51 +1118,12 @@ describe("ACP turns (fake CLI)", () => {
     expect(readFileSync(answer, "utf8")).toBe(collision ? "cancelled" : "green-id");
   });
 
-  it("per-bot Ask surfaces permissions from a legacy full-auto instance", async () => {
-    process.env.FAKE_ACP_MODE = "permission";
-    const dump = join(scratch, "ask-permission-overrides-full-auto.json");
-    process.env.FAKE_ACP_DUMP = dump;
-    instance = await GrokAgentDriver.create({
-      instanceId: "grok-ask-override",
-      displayName: "Grok Ask Override",
-      environment: {},
-      enabled: true,
-      config: { cli: FAKE_CLI, fullAuto: true },
-    });
-    recorder = recordEvents(instance.adapter);
-
-    await instance.adapter.sendTurn({
-      threadId: "t-ask-permission-override",
-      text: "go",
-      approvalMode: "ask",
-    });
-    const opened = await recorder.until((e) => e.type === "request.opened");
-    const argv = JSON.parse(readFileSync(dump, "utf8")).argv as string[];
-    expect(argv[argv.indexOf("--permission-mode") + 1]).toBe("default");
-
-    await instance.adapter.respondToRequest(
-      "t-ask-permission-override",
-      (opened as { requestId: string }).requestId,
-      { behavior: "allow" },
-    );
-    await recorder.until((e) => e.type === "turn.completed");
-  });
-
-  it("maps Auto-accept edits to Grok's native acceptEdits", async () => {
-    await create(GrokAgentDriver);
-    const dump = join(scratch, "grok-edits.json");
-    process.env.FAKE_ACP_DUMP = dump;
-    const { turnId } = await instance.adapter.sendTurn({ threadId: "t-grok-edits", text: "go", approvalMode: "edits" });
-    await recorder.until((e) => e.type === "turn.completed" && e.turnId === turnId);
-    const argv = JSON.parse(readFileSync(dump, "utf8")).argv as string[];
-    expect(argv[argv.indexOf("--permission-mode") + 1]).toBe("acceptEdits");
-  });
 
   it.each([false, true])("returns rejected when an allow has no native permission option (always: %s)", async (always) => {
     process.env.FAKE_ACP_PERMISSION_OPTIONS = JSON.stringify([{ optionId: "reject", kind: "reject_once" }]);
     const answer = join(scratch, "reject-only-answer.txt");
     process.env.FAKE_ACP_PERMISSION_ANSWER = answer;
-    await create(GrokAgentDriver, "permission");
+    await create(KimiAgentDriver, "permission");
     const threadId = "t-reject-only";
     await instance.adapter.sendTurn({ threadId, text: "go", approvalMode: "ask" });
     const opened = await recorder.until((event) => event.type === "request.opened");
@@ -1306,7 +1140,7 @@ describe("ACP turns (fake CLI)", () => {
     process.env.FAKE_ACP_ALLOW_ALWAYS = "1";
     const answer = join(scratch, "permission-answer.txt");
     process.env.FAKE_ACP_PERMISSION_ANSWER = answer;
-    await create(GrokAgentDriver, "permission");
+    await create(KimiAgentDriver, "permission");
     await instance.adapter.sendTurn({ threadId: "t-always-native", text: "go", approvalMode: "ask" });
     const opened = await recorder.until((e) => e.type === "request.opened");
     // the card may offer it: the driver can honor a session-wide allow
@@ -1317,12 +1151,12 @@ describe("ACP turns (fake CLI)", () => {
   });
 
   it("remembers the exact operation for the session when the agent offers no allow_always", async () => {
-    // Grok 4.6 often omits allow_always. The driver then answers allow_once
+    // When the agent omits allow_always, the driver answers allow_once
     // and repeats the person's answer for that exact operation on the
     // resumed session — and only that operation, and only that session.
     const answer = join(scratch, "permission-answer-once.txt");
     process.env.FAKE_ACP_PERMISSION_ANSWER = answer;
-    await create(GrokAgentDriver, "permission");
+    await create(KimiAgentDriver, "permission");
     await instance.adapter.sendTurn({ threadId: "t-always-memory", text: "go", approvalMode: "ask" });
     const opened = await recorder.until((e) => e.type === "request.opened");
     await instance.adapter.respondToRequest("t-always-memory", (opened as { requestId: string }).requestId, { behavior: "allow", always: true });
@@ -1345,145 +1179,8 @@ describe("ACP turns (fake CLI)", () => {
     expect(recorder.events.filter((e) => e.type === "request.opened")).toHaveLength(2);
   });
 
-  it.each(["grok-4.7", "grok-4.6", "grok-4.5", "local-model"])(
-    "keeps native Grok Auto when selecting and resuming %s",
-    async (model) => {
-      await create(GrokAgentDriver);
-      const agents = { command: "node", args: ["/fixture/agents-proxy.mjs"], env: {} };
-      for (const resumeCursor of [undefined, "fake-acp-session"]) {
-        const dump = join(scratch, `grok-auto-${resumeCursor ? "resume" : "new"}.json`);
-        const threadId = `t-grok-auto-${model}-${resumeCursor ? "resume" : "new"}`;
-        process.env.FAKE_ACP_DUMP = dump;
-        const { turnId } = await instance.adapter.sendTurn({
-          threadId,
-          text: "read the roster",
-          model,
-          effort: "high",
-          approvalMode: "auto",
-          resumeCursor,
-          integrations: {
-            agents,
-            custom: { agents: { command: "must-not-shadow-agents", args: [], env: {} } },
-          },
-        });
-        await recorder.until((e) => e.type === "turn.completed" && e.turnId === turnId);
-        const seen = JSON.parse(readFileSync(dump, "utf8"));
-        expect(seen.argv).toEqual([
-          "--permission-mode", "auto",
-          "agent", "-m", model, "--reasoning-effort", "high", "stdio",
-        ]);
-        const sessionMethod = resumeCursor ? "session/load" : "session/new";
-        const sent = readFileSync(join(NATIVE_DIR, `${threadId}.ndjson`), "utf8")
-          .trim().split("\n").map((line) => JSON.parse(line))
-          .find((entry) => entry.dir === "out" && entry.msg.method === sessionMethod);
-        expect(sent.msg.params.mcpServers).toEqual([{ name: "agents", ...agents, env: [] }]);
-        expect(JSON.parse(readFileSync(`${dump}.config.json`, "utf8"))).toEqual([
-          { method: "session/set_model", params: { sessionId: "fake-acp-session", modelId: model } },
-        ]);
-        expect(recorder.events.find((e) => e.type === "session.started" && e.turnId === turnId))
-          .toMatchObject({ model });
-      }
-    },
-  );
-
-  it.each([
-    ["ask", true, "default"],
-    ["full", true, "bypassPermissions"],
-    ["custom", true, "default"],
-    ["auto", false, "auto"],
-  ] as const)("Grok %s with agents mounted=%s overrides a legacy full-auto setting", async (approvalMode, mounted, nativeMode) => {
-    instance = await GrokAgentDriver.create({
-      instanceId: "grok-mode-override",
-      displayName: "Grok",
-      environment: {},
-      enabled: true,
-      config: { cli: FAKE_CLI, fullAuto: true },
-    });
-    recorder = recordEvents(instance.adapter);
-    const dump = join(scratch, "grok-mode-override.json");
-    process.env.FAKE_ACP_DUMP = dump;
-    await instance.adapter.sendTurn({
-      threadId: "t-grok-mode-override",
-      text: "continue",
-      approvalMode,
-      resumeCursor: "fake-acp-session",
-      integrations: mounted ? { agents: { command: "node", args: [], env: {} } } : undefined,
-    });
-    await recorder.until((e) => e.type === "turn.completed");
-    expect(JSON.parse(readFileSync(dump, "utf8")).argv).toEqual([
-      "--permission-mode", nativeMode, "agent", "stdio",
-    ]);
-  });
-
-  it("keeps residual Grok Auto permissions interactive", async () => {
-    await create(GrokAgentDriver, "permission");
-    await instance.adapter.sendTurn({
-      threadId: "t-grok-auto-permission",
-      text: "run the command",
-      approvalMode: "auto",
-      integrations: { agents: { command: "node", args: [], env: {} } },
-    });
-    const opened = await recorder.until((e) => e.type === "request.opened");
-    expect(opened).toMatchObject({ requestType: "permission", tool: "shell" });
-    expect(recorder.events.some((e) => e.type === "request.resolved")).toBe(false);
-    await instance.adapter.respondToRequest("t-grok-auto-permission", opened.requestId!, { behavior: "deny" });
-    expect(await recorder.until((e) => e.type === "request.resolved"))
-      .toMatchObject({ behavior: "deny", source: "user" });
-    await recorder.until((e) => e.type === "turn.completed");
-  });
-
-  it("grok fails closed when the CLI advertises no cached_token (needs login)", async () => {
-    await create(GrokAgentDriver, "no-auth");
-    await instance.adapter.sendTurn({ threadId: "t-auth", text: "go" });
-    const done = await recorder.until((e) => e.type === "turn.completed");
-    expect(done).toMatchObject({ ok: false, stopReason: "auth_required" });
-    const err = recorder.events.find((e) => e.type === "runtime.error")!;
-    expect(err.message).toMatch(/not signed in/);
-  });
-
-  it("grok local inject does not require grok.com login", async () => {
-    process.env.FAKE_ACP_MODE = "no-auth";
-    mkdirSync(join(scratch, ".grok"), { recursive: true });
-    instance = await GrokAgentDriver.create({
-      instanceId: "acp-test",
-      displayName: "ACP Test",
-      environment: { HOME: scratch, GROK_HOME: join(scratch, ".grok") },
-      enabled: true,
-      config: { cli: FAKE_CLI, fullAuto: false },
-    });
-    recorder = recordEvents(instance.adapter);
-    await instance.adapter.sendTurn({
-      threadId: "t-local-auth",
-      text: "go",
-      model: "omlx::MiniMax-M3-4bit",
-    });
-    const done = await recorder.until((e) => e.type === "turn.completed");
-    expect(done).toMatchObject({ ok: true });
-    expect(recorder.events.some((e) => e.type === "runtime.error")).toBe(false);
-  });
-
-  it("gemini proceeds through a missing auth method (lenient login)", async () => {
-    await create(GeminiAgentDriver, "no-auth");
-    await instance.adapter.sendTurn({ threadId: "t-lenient", text: "go" });
-    const done = await recorder.until((e) => e.type === "turn.completed");
-    expect(done).toMatchObject({ ok: true });
-    expect(recorder.events.some((e) => e.provider === "geminiAgent")).toBe(true);
-  });
-
-  it("starts Gemini CLI on its stable ACP surface", async () => {
-    const dump = join(scratch, "gemini-acp.json");
-    process.env.FAKE_ACP_DUMP = dump;
-    await create(GeminiAgentDriver);
-    await instance.adapter.sendTurn({ threadId: "t-gemini-acp", text: "go", model: "gemini-test" });
-    await recorder.until((e) => e.type === "turn.completed");
-
-    const argv = JSON.parse(readFileSync(dump, "utf8")).argv as string[];
-    expect(argv).toEqual(["--acp", "-m", "gemini-test"]);
-    expect(argv).not.toContain("--experimental-acp");
-  });
-
   it("rejects a second turn while one is in flight", async () => {
-    await create(GrokAgentDriver, "hang");
+    await create(KimiAgentDriver, "hang");
     await instance.adapter.sendTurn({ threadId: "t-busy", text: "one" });
     await recorder.until((e) => e.type === "session.started");
     await expect(instance.adapter.sendTurn({ threadId: "t-busy", text: "two" })).rejects.toThrow(/already running/);
@@ -1492,7 +1189,7 @@ describe("ACP turns (fake CLI)", () => {
   });
 
   it("interrupt settles a hung turn as cancelled", async () => {
-    await create(GrokAgentDriver, "hang");
+    await create(KimiAgentDriver, "hang");
     await instance.adapter.sendTurn({ threadId: "t-int", text: "go" });
     await recorder.until((e) => e.type === "session.started");
     await instance.adapter.interruptTurn("t-int");
@@ -1501,7 +1198,7 @@ describe("ACP turns (fake CLI)", () => {
   });
 
   it("an exit before result becomes runtime.error + failed turn", async () => {
-    await create(GrokAgentDriver, "exit-early");
+    await create(KimiAgentDriver, "exit-early");
     await instance.adapter.sendTurn({ threadId: "t-crash", text: "go" });
     const done = await recorder.until((e) => e.type === "turn.completed");
     expect(done).toMatchObject({ ok: false });
@@ -1510,7 +1207,7 @@ describe("ACP turns (fake CLI)", () => {
 
   it("does not expire an agent while a person is answering an approval", async () => {
     process.env.OPENMAUS_ACP_PROMPT_IDLE_TIMEOUT_MS = "150";
-    await create(GrokAgentDriver, "permission");
+    await create(KimiAgentDriver, "permission");
     await instance.adapter.sendTurn({ threadId: "t-idle-approval", text: "go", approvalMode: "ask" });
     const opened = await recorder.until(e => e.type === "request.opened");
     await new Promise(resolve => setTimeout(resolve, 450));
@@ -1523,7 +1220,7 @@ describe("ACP turns (fake CLI)", () => {
 
   // MOCA-260: a quiet `sleep` or build sends nothing while it runs, and the
   // guard used to stop the turn as if the agent had hung.
-  it.each([GrokAgentDriver, QwenAgentDriver])("does not expire $driverKind while a tool it started is still running", async (driver) => {
+  it.each([KimiAgentDriver, QwenAgentDriver])("does not expire $driverKind while a tool it started is still running", async (driver) => {
     process.env.OPENMAUS_ACP_PROMPT_IDLE_TIMEOUT_MS = "150";
     process.env.FAKE_ACP_TOOL_MS = "600";
     await create(driver, "slow-tool");
@@ -1533,7 +1230,7 @@ describe("ACP turns (fake CLI)", () => {
     expect(recorder.events.find(e => e.type === "item.completed" && e.itemType === "tool")).toMatchObject({ ok: true });
   });
 
-  it.each([GrokAgentDriver, QwenAgentDriver])("still fails $driverKind when it goes silent once its tool has finished", async (driver) => {
+  it.each([KimiAgentDriver, QwenAgentDriver])("still fails $driverKind when it goes silent once its tool has finished", async (driver) => {
     process.env.OPENMAUS_ACP_PROMPT_IDLE_TIMEOUT_MS = "150";
     await create(driver, "stall-after-tool");
     await instance.adapter.sendTurn({ threadId: "t-stall-tool", text: "go" });
@@ -1550,12 +1247,12 @@ describe("ACP turns (fake CLI)", () => {
     process.env.OMB_ACP_QUIET_NOTICE_MS = "150";
     process.env.OMB_ACP_QUIET_TICK_MS = "50";
     process.env.FAKE_ACP_QUIET_MS = "700";
-    await create(GrokAgentDriver, "quiet-then-answer");
+    await create(KimiAgentDriver, "quiet-then-answer");
     await instance.adapter.sendTurn({ threadId: "t-quiet", text: "go" });
     expect(await recorder.until(e => e.type === "turn.completed")).toMatchObject({ ok: true });
     const notices = recorder.events.filter(e => e.type === "runtime.notice") as Array<{ message: string }>;
     expect(notices.length).toBeGreaterThanOrEqual(1);
-    expect(notices[0].message).toMatch(/^Grok (is waiting on its model|is busy|has sent nothing)/);
+    expect(notices[0].message).toMatch(/^Kimi (is waiting on its model|is busy|has sent nothing)/);
     expect(recorder.events.some(e => e.type === "runtime.error")).toBe(false);
   });
 
@@ -1588,7 +1285,7 @@ describe("ACP turns (fake CLI)", () => {
 
   it("an agent that goes silent mid-answer is failed and closed by the prompt idle guard", async () => {
     process.env.OPENMAUS_ACP_PROMPT_IDLE_TIMEOUT_MS = "150";
-    await create(GrokAgentDriver, "stall-after-text");
+    await create(KimiAgentDriver, "stall-after-text");
     await instance.adapter.sendTurn({ threadId: "t-stall", text: "go" });
 
     const done = await recorder.until((e) => e.type === "turn.completed");
@@ -1602,7 +1299,7 @@ describe("ACP turns (fake CLI)", () => {
   });
 
   it("an end_turn with no reply, image, or tool result becomes runtime.error + failed turn", async () => {
-    await create(GrokAgentDriver, "empty-reply");
+    await create(KimiAgentDriver, "empty-reply");
     await instance.adapter.sendTurn({ threadId: "t-empty", text: "go" });
     const done = await recorder.until((e) => e.type === "turn.completed");
     expect(done).toMatchObject({ ok: false, stopReason: "empty_turn" });
@@ -1614,7 +1311,7 @@ describe("ACP turns (fake CLI)", () => {
     // the shape of a provider that never leaves its thinking stream: thought
     // chunks stream, the engine still answers end_turn, and the turn must be
     // reported as failed rather than completed-with-nothing
-    await create(GrokAgentDriver, "reasoning-only");
+    await create(KimiAgentDriver, "reasoning-only");
     await instance.adapter.sendTurn({ threadId: "t-reasoning", text: "go" });
     const done = await recorder.until((e) => e.type === "turn.completed");
     expect(done).toMatchObject({ ok: false, stopReason: "empty_turn" });
@@ -1697,7 +1394,7 @@ describe("ACP turns (fake CLI)", () => {
   });
 
   it("reuses a resume cursor when session/load returns a session", async () => {
-    await create(GrokAgentDriver);
+    await create(KimiAgentDriver);
     await instance.adapter.sendTurn({
       threadId: "t-resume-truthy",
       text: "go",
@@ -1712,7 +1409,7 @@ describe("ACP turns (fake CLI)", () => {
 
   it("falls through to session/new when session/load returns null", async () => {
     process.env.FAKE_ACP_LOAD_NULL = "1";
-    await create(GrokAgentDriver);
+    await create(KimiAgentDriver);
     await instance.adapter.sendTurn({
       threadId: "t-resume-null",
       text: "go",
@@ -1731,7 +1428,7 @@ describe("ACP turns (fake CLI)", () => {
     const dump = join(scratch, "recovery.json");
     process.env.FAKE_ACP_DUMP = dump;
     process.env.FAKE_ACP_DUMP_PROMPT = "1";
-    await create(GrokAgentDriver);
+    await create(KimiAgentDriver);
     const recoveryText = "User: Remember ALPHA.\nAssistant: Remembered.\nUser: What did I say?";
     await instance.adapter.sendTurn({
       threadId: "t-resume-history", text: "What did I say?", resumeCursor: "missing-cursor",
@@ -1840,56 +1537,6 @@ describe("ACP turns (fake CLI)", () => {
     expect(JSON.parse(readFileSync(dump, "utf8")).env.TEST_POLICY).toBe("ask");
   });
 
-  it("declares effort levels for Grok only", async () => {
-    await create(GrokAgentDriver);
-    expect(instance.adapter.capabilities.effortLevels).toEqual(["low", "medium", "high"]);
-
-    await create(GeminiAgentDriver);
-    expect(instance.adapter.capabilities.effortLevels).toBeUndefined();
-
-    await create(KimiAgentDriver);
-    expect(instance.adapter.capabilities.effortLevels).toBeUndefined();
-  });
-
-  it("passes effort to Grok, and omits the flag when unset", async () => {
-    const withEffort = join(scratch, "grok-effort.json");
-    await create(GrokAgentDriver);
-    process.env.FAKE_ACP_DUMP = withEffort;
-    await instance.adapter.sendTurn({ threadId: "t-effort", text: "hi", effort: "high" });
-    await recorder.until((e) => e.type === "turn.completed");
-
-    const seen = JSON.parse(readFileSync(withEffort, "utf8"));
-    expect(seen.argv).toContain("--reasoning-effort");
-    expect(seen.argv[seen.argv.indexOf("--reasoning-effort") + 1]).toBe("high");
-
-    const without = join(scratch, "grok-no-effort.json");
-    await create(GrokAgentDriver);
-    process.env.FAKE_ACP_DUMP = without;
-    await instance.adapter.sendTurn({ threadId: "t-no-effort", text: "hi" });
-    await recorder.until((e) => e.type === "turn.completed");
-
-    expect(JSON.parse(readFileSync(without, "utf8")).argv).not.toContain("--reasoning-effort");
-  });
-
-  it("puts Grok -m after agent so ACP stdio binds the local slug", async () => {
-    const dump = join(scratch, "grok-argv-order.json");
-    await create(GrokAgentDriver);
-    process.env.FAKE_ACP_DUMP = dump;
-    await instance.adapter.sendTurn({ threadId: "t-argv", text: "hi", model: "grok-4.5", effort: "high" });
-    await recorder.until((e) => e.type === "turn.completed");
-
-    const argv = JSON.parse(readFileSync(dump, "utf8")).argv as string[];
-    const agent = argv.indexOf("agent");
-    const modelFlag = argv.indexOf("-m");
-    const stdio = argv.indexOf("stdio");
-    expect(agent).toBeGreaterThan(-1);
-    expect(modelFlag).toBeGreaterThan(agent);
-    expect(stdio).toBeGreaterThan(modelFlag);
-    expect(argv[modelFlag + 1]).toBe("grok-4.5");
-    expect(argv.indexOf("--reasoning-effort")).toBeGreaterThan(agent);
-    expect(argv.indexOf("--permission-mode")).toBeLessThan(agent);
-  });
-
   describe("opt-in startup recovery", () => {
     const failStartup = async (message = "503 Service Unavailable") => {
       const failureFile = join(scratch, "startup-failure.json");
@@ -1925,7 +1572,7 @@ describe("ACP turns (fake CLI)", () => {
 
     it("acknowledges before a prompt timeout and never offers startup recovery afterward", async () => {
       process.env.OPENMAUS_ACP_PROMPT_IDLE_TIMEOUT_MS = "100";
-      await create(GrokAgentDriver, "stall-after-text");
+      await create(KimiAgentDriver, "stall-after-text");
       const ack = await instance.adapter.sendTurn({ threadId: "startup-prompt", text: "go", startupRecovery: true });
       expect(recorder.events.some((event) => event.type === "turn.completed")).toBe(false);
       expect(await recorder.until((event) => event.type === "turn.completed" && event.turnId === ack.turnId))
@@ -1933,7 +1580,7 @@ describe("ACP turns (fake CLI)", () => {
     });
 
     it("resolves the pending ACK when Stop interrupts initialization", async () => {
-      await create(GrokAgentDriver, "hang-initialize");
+      await create(KimiAgentDriver, "hang-initialize");
       const pending = instance.adapter.sendTurn({ threadId: "startup-stop", text: "go", startupRecovery: true });
       let acknowledged = false;
       void pending.then(() => { acknowledged = true; });
@@ -2190,7 +1837,7 @@ describe("ACP turns (fake CLI)", () => {
     });
 
     it.each([
-      { driver: GrokAgentDriver, expectedLaunches: 1 },
+      { driver: KimiAgentDriver, expectedLaunches: 1 },
       { driver: QwenAgentDriver, expectedLaunches: 2 },
     ])("rotating credentials refreshes $driver.driverKind with $expectedLaunches process(es)", async ({ driver, expectedLaunches }) => {
       countFile = join(scratch, "launches");
@@ -2432,7 +2079,7 @@ describe("ACP turns (fake CLI)", () => {
     it("an interrupt that the agent honors keeps the process pooled", async () => {
       countFile = join(scratch, "launches");
       process.env.FAKE_ACP_LAUNCH_COUNT_FILE = countFile;
-      await create(GrokAgentDriver, "hang");
+      await create(KimiAgentDriver, "hang");
       await instance.adapter.sendTurn({ threadId: "t-pool-interrupt", text: "go" });
       await recorder.until((e) => e.type === "session.started");
       await instance.adapter.interruptTurn("t-pool-interrupt");
@@ -2447,7 +2094,7 @@ describe("ACP turns (fake CLI)", () => {
 
 describe("ACP snapshot", () => {
   it("a missing binary is unavailable", async () => {
-    const instance = await GrokAgentDriver.create({
+    const instance = await KimiAgentDriver.create({
       instanceId: "grok-missing",
       displayName: undefined,
       environment: {},
@@ -2478,128 +2125,6 @@ describe("ACP snapshot", () => {
       mkdirSync(join(kimiHome, "credentials"), { recursive: true });
       writeFileSync(join(kimiHome, "credentials", "kimi-code.json"), "{}");
       expect((await instance.snapshot()).authenticated).toBe(true);
-    } finally {
-      await instance.dispose();
-      await removeTempDir(scratch);
-    }
-  });
-
-  it("droid resolves the signed-in CLI before falling back to FACTORY_API_KEY", async () => {
-    const scratch = mkdtempSync(join(tmpdir(), "omb-droid-auth-"));
-    // FACTORY_HOME_OVERRIDE replaces the CLI's HOME, not its data root: droid
-    // writes <home>/.factory/auth.v2.file either way (verified against 0.196.0).
-    const overrideHome = join(scratch, "custom-home");
-    const childHome = join(scratch, "child-home");
-    mkdirSync(join(childHome, ".factory"), { recursive: true });
-    writeFileSync(join(childHome, ".factory", "auth.v2.file"), "{}");
-
-    // The child env inherits process.env (core.ts childEnv), so a developer
-    // machine with a real FACTORY_API_KEY exported would otherwise satisfy
-    // every case here and prove nothing about the on-disk lookup.
-    // Windows resolves the driver home from USERPROFILE first, so every
-    // case pins both to its scratch home like the qwen turn test does.
-    const make = (environment: Record<string, string>) =>
-      DroidAgentDriver.create({
-        instanceId: "droid-auth",
-        displayName: undefined,
-        environment: { FACTORY_API_KEY: "", ...(environment.HOME ? { USERPROFILE: environment.HOME } : {}), ...environment },
-        enabled: true,
-        config: { cli: FAKE_CLI, fullAuto: false },
-      });
-
-    const instances: ProviderInstance[] = [];
-    try {
-      // FACTORY_HOME_OVERRIDE wins: the child HOME's credential must not count.
-      const overridden = await make({ FACTORY_HOME_OVERRIDE: overrideHome, HOME: childHome });
-      instances.push(overridden);
-      expect((await overridden.snapshot()).authenticated).toBe(false);
-      mkdirSync(join(overrideHome, ".factory"), { recursive: true });
-      writeFileSync(join(overrideHome, ".factory", "auth.v2.file"), "{}");
-      expect((await overridden.snapshot()).authenticated).toBe(true);
-
-      // A logged-out override is not rescued by a key on the way past it, but
-      // the key alone still authenticates when nothing is signed in on disk.
-      const loggedOutWithKey = await make({
-        FACTORY_HOME_OVERRIDE: join(scratch, "empty-home"),
-        HOME: childHome,
-        FACTORY_API_KEY: "fk-test",
-      });
-      instances.push(loggedOutWithKey);
-      expect((await loggedOutWithKey.snapshot()).authenticated).toBe(true);
-
-      const fromHome = await make({ HOME: childHome });
-      instances.push(fromHome);
-      expect((await fromHome.snapshot()).authenticated).toBe(true);
-
-      // secure_auth_storage writes the keychain/keyring variant instead of
-      // auth.v2.file, so a fresh macOS login has only this one.
-      const keychainHome = join(scratch, "keychain-home");
-      mkdirSync(join(keychainHome, ".factory"), { recursive: true });
-      writeFileSync(join(keychainHome, ".factory", "auth.v2.loginkeychain"), "{}");
-      const fromKeychain = await make({ HOME: keychainHome });
-      instances.push(fromKeychain);
-      expect((await fromKeychain.snapshot()).authenticated).toBe(true);
-
-      const neither = await make({ HOME: join(scratch, "empty") });
-      instances.push(neither);
-      expect((await neither.snapshot()).authenticated).toBe(false);
-    } finally {
-      for (const i of instances) await i.dispose();
-      await removeTempDir(scratch);
-    }
-  });
-
-  it("droid reads custom models, favourites order, and the configured default", async () => {
-    const scratch = mkdtempSync(join(tmpdir(), "omb-droid-models-"));
-    mkdirSync(join(scratch, ".factory"), { recursive: true });
-    writeFileSync(
-      join(scratch, ".factory", "settings.json"),
-      JSON.stringify({
-        customModels: [
-          { id: "custom:LMStudio-Qwen-0", displayName: "Qwen (local)" },
-          { id: "custom:Azure-Opus-0", displayName: "Azure Opus" },
-        ],
-        modelFavorites: ["custom:Azure-Opus-0", "custom:LMStudio-Qwen-0"],
-        sessionDefaultSettings: { model: "custom:LMStudio-Qwen-0" },
-      }),
-    );
-
-    const instance = await DroidAgentDriver.create({
-      instanceId: "droid-models",
-      displayName: undefined,
-      environment: { HOME: scratch, USERPROFILE: scratch },
-      enabled: true,
-      config: { cli: FAKE_CLI, fullAuto: false },
-    });
-    try {
-      // favourites first in the user's own order, then the built-in slice
-      expect(instance.models.options.slice(0, 2)).toEqual([
-        { id: "custom:Azure-Opus-0", label: "Azure Opus", custom: true },
-        { id: "custom:LMStudio-Qwen-0", label: "Qwen (local)", custom: true },
-      ]);
-      expect(instance.models.options.some((o) => o.id === "claude-opus-5")).toBe(true);
-      expect(instance.models.default).toBe("custom:LMStudio-Qwen-0");
-    } finally {
-      await instance.dispose();
-      await removeTempDir(scratch);
-    }
-  });
-
-  it("droid falls back to the built-in catalog when settings.json is unreadable", async () => {
-    const scratch = mkdtempSync(join(tmpdir(), "omb-droid-nosettings-"));
-    mkdirSync(join(scratch, ".factory"), { recursive: true });
-    writeFileSync(join(scratch, ".factory", "settings.json"), "{ not json");
-
-    const instance = await DroidAgentDriver.create({
-      instanceId: "droid-models-fallback",
-      displayName: undefined,
-      environment: { HOME: scratch },
-      enabled: true,
-      config: { cli: FAKE_CLI, fullAuto: false },
-    });
-    try {
-      expect(instance.models.default).toBe("claude-opus-5");
-      expect(instance.models.options.every((o) => !o.id.startsWith("custom:"))).toBe(true);
     } finally {
       await instance.dispose();
       await removeTempDir(scratch);

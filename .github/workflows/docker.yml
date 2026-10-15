@@ -252,15 +252,13 @@ jobs:
         # in a layer costs every machine that pulls the image. The Cloud home's
         # Caddy must not carry the privileged-port capability (it runs as maus
         # on :8080), which Docker's default capabilities would hide at runtime.
-        # Its Grok is one root-owned binary, with nothing from the installer's
-        # throwaway home left in the image.
         run: |
           set -euo pipefail
           docker save openmausbot:ci -o "$RUNNER_TEMP/server.tar"
           docker save omb-cloud-home:ci -o "$RUNNER_TEMP/home.tar"
           python3 - "$RUNNER_TEMP/server.tar" "$RUNNER_TEMP/home.tar" <<'PY'
           import json, re, sys, tarfile
-          cache = re.compile(r"^(root/\.npm|tmp/(npm-cache|omb-build-home|node-compile-cache|grok-install))/")
+          cache = re.compile(r"^(root/\.npm|tmp/(npm-cache|omb-build-home|node-compile-cache))/")
           for path in sys.argv[1:]:
               files = {}
               with tarfile.open(path) as image:
@@ -280,10 +278,6 @@ jobs:
                   assert len(caddy) == 1, f"Caddy is written {len(caddy)} times"
                   assert caddy[0].uid == 0, f"Caddy belongs to uid {caddy[0].uid}"
                   assert not any(key.startswith("SCHILY.xattr.security.") for key in caddy[0].pax_headers), "Caddy keeps a file capability"
-                  grok = files["usr/local/bin/grok"]
-                  assert len(grok) == 1 and grok[0].uid == 0 and grok[0].mode & 0o7777 == 0o755, "Grok is not one root-owned 0755 binary"
-                  installer = sorted(name for name in files if re.match(r"(data|root)/\.grok/|usr/local/bin/agent$", name))
-                  assert not installer, f"Grok's installer left files behind: {installer[:5]}"
               print(f"{path}: {len(files)} files, each once; no build cache; {native[0]}")
           PY
 

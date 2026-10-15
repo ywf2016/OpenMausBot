@@ -1,8 +1,7 @@
 // The one in-app sign-in with a code for an engine's CLI on the machine
-// running OpenMausBot: Codex with a ChatGPT account, Grok Build with a
-// grok.com account (a one-time code entered at the provider's page), and the
-// ChatGPT plan (a browser page, no code). The same card on the desktop, a
-// self-hosted server and My Cloud.
+// running OpenMausBot: Codex with a ChatGPT account (a one-time code entered
+// at the provider's page), and the ChatGPT plan (a browser page, no code).
+// The same card on the desktop, a self-hosted server and My Cloud.
 import { useEffect, useState } from "react";
 import { Check, Copy, ExternalLink, Loader2, LogIn, X } from "lucide-react";
 import { api, ApiError, useStore } from "@/state/store";
@@ -23,8 +22,8 @@ export interface DeviceSignInStatus {
 }
 
 /** Whose page an engine's device code is entered at. */
-export function deviceSignInProvider(driverKind: string): DeviceSignInProvider {
-  return driverKind === "grokAgent" ? "grok" : "codex";
+export function deviceSignInProvider(_driverKind: string): DeviceSignInProvider {
+  return "codex";
 }
 
 /** The words that differ by whose account the code signs in. */

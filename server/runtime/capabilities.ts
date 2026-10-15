@@ -45,33 +45,19 @@ const ENGINES: Readonly<Record<string, EngineRow>> = {
   // Native sessions a later turn resumes through resumeCursor.
   claudeAgent: { resume: true }, // claude.ts:1546 `--resume <sessionId>`
   codex: { resume: true }, // codex.ts:1885 thread/resume with the codex thread id
-  piAgent: { resume: true }, // pi.ts:1175 switch_session with the session file
-  antigravityAgent: { resume: true }, // antigravity.ts:78 resumeMethod "resume", through acp/core.ts:1930
   // The ACP family: acp/core.ts:1913 takes the cursor and :1930 sends
   // session/load (session/new with the replay when the agent refuses it,
   // server/resume-recovery.ts); a pooled process keeps the live session
   // either way.
-  grokAgent: { resume: true }, // acp/grok.ts:349
-  geminiAgent: { resume: true }, // acp/gemini.ts:86
   kimiAgent: { resume: true }, // acp/kimi.ts:500 (loadSession:true, :6)
-  droidAgent: { resume: true }, // acp/droid.ts:217 (loadSession:true, :5)
   cursorAgent: { resume: true }, // acp/cursor.ts:387
-  museCode: { resume: true }, // muse-code.ts session/resume with the Muse session id
   opencodeGo: { resume: true }, // acp/opencode-go.ts:838
   qwenAgent: { resume: true }, // acp/qwen.ts:219
-  hermesAgent: { resume: true }, // acp/hermes.ts:418
-  clineAgent: { resume: true }, // acp/cline.ts:56
   customAcp: { resume: true }, // acp/custom.ts:21
   // The chat-completions family (createOpenAIChatRuntime, openai-chat.ts):
   // no native session, every turn replays the transcript, MAX_CHAT_ROUNDS
   // steps per turn.
   "openai-compat": { resume: false, stepCap: CHAT_STEP_CAP }, // openai-compat.ts:6
-  grok: { resume: false, stepCap: CHAT_STEP_CAP }, // grok.ts:6
-  minimax: { resume: false, stepCap: CHAT_STEP_CAP }, // minimax.ts:11
-  mistral: { resume: false, stepCap: CHAT_STEP_CAP }, // mistral.ts:48
-  cerebras: { resume: false, stepCap: CHAT_STEP_CAP }, // cerebras.ts:41
-  groq: { resume: false, stepCap: CHAT_STEP_CAP }, // groq.ts:41
-  meta: { resume: false, stepCap: CHAT_STEP_CAP }, // meta.ts:54
 };
 
 /** The engines with a row, for the table test. */

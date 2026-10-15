@@ -15,8 +15,8 @@
 #   docker build --build-arg ENGINES="@anthropic-ai/claude-code @openai/codex" -t openmausbot .
 #   docker build --target cloud-home -t omb-cloud-home .
 #
-# HOME is the /data volume, so engine CLI logins (~/.claude, ~/.codex, ~/.grok,
-# ...) and OpenMausBot's own state (~/.openmausbot) persist across container
+# HOME is the /data volume, so engine CLI logins (~/.claude, ~/.codex, ...)
+# and OpenMausBot's own state (~/.openmausbot) persist across container
 # restarts.
 #
 # A plain `docker run` of either image wants `--init --shm-size=512m`, as the
@@ -102,27 +102,8 @@ ENV AGENT_BROWSER_EXECUTABLE_PATH=/opt/openmausbot-browser/chrome \
 WORKDIR /app
 
 FROM runtime AS cloud-home
-# Caddy and Grok are pinned, so they sit beneath the engines, which change
-# more often.
+# Caddy is pinned, so it sits beneath the engines, which change more often.
 COPY --from=edge /caddy /usr/local/bin/caddy
-# Grok Build, the grok.com subscription engine: xAI's own installer, pinned to
-# the version the Grok driver is verified against (server/drivers/acp/grok.ts).
-# People sign it in from the app with a device code; its login lands in
-# ~/.grok on the volume. Only the binary goes to /usr/local/bin, on every
-# user's PATH and out of the volume; the installer's PATH links and shell
-# setup stay in a throwaway home that the same step removes. If xAI's
-# installer cannot be reached, the build fails: an image without Grok would
-# offer a sign-in that cannot run. GROK_VERSION= (empty) leaves Grok out on
-# purpose.
-ARG GROK_VERSION=1.0.41
-RUN if [ -n "$GROK_VERSION" ]; then \
-      mkdir -p /tmp/grok-install \
-      && curl -fsSL https://x.ai/cli/install.sh -o /tmp/grok-install/install.sh \
-      && HOME=/tmp/grok-install PATH="/tmp/grok-install/.grok/bin:$PATH" bash /tmp/grok-install/install.sh "$GROK_VERSION" \
-      && install -m 0755 "$(readlink -f /tmp/grok-install/.grok/bin/grok)" /usr/local/bin/grok \
-      && HOME=/tmp/grok-install grok --version | grep -qF "grok $GROK_VERSION " \
-      && rm -rf /tmp/grok-install; \
-    fi
 # Engine CLIs baked into the image (space-separated npm packages). The publish
 # job passes each one's current version, or names only and today's date as
 # ENGINES_CACHE_TAG when it cannot look them up. Build-time CLI caches must

@@ -1,7 +1,7 @@
 // A focused setup card shared by onboarding, the model picker, and runtime
 // errors. The command has one inline copy action and one primary next step;
 // unusable model lists stay out of the way until the engine is ready.
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AlertTriangle, Check, Copy, Download, ExternalLink, KeyRound, Loader2, LogIn, TerminalSquare, X } from "lucide-react";
 import { api, type EngineInstall, type InstanceInfo, useStore } from "@/state/store";
 import { cn } from "@/lib/cn";
@@ -53,14 +53,6 @@ export function needsCli(instance: InstanceInfo | undefined): boolean {
  * remote client, or My Cloud, where a terminal command is a dead end. */
 export function serverTerminal(cloudHome: boolean): boolean {
   return Boolean(window.ogb?.openInstallTerminal) && window.ogb?.remoteClient?.active !== true && !cloudHome;
-}
-
-/** Grok Build cannot run here (no Grok CLI on this server, an older Cloud
- * computer image for one) and nobody here can install it. Its models are
- * still an xAI API key away, so the card says that instead of handing over
- * an install command that cannot run. */
-export function grokKeyInstead(instance: InstanceInfo, cloudHome: boolean): boolean {
-  return instance.driverKind === "grokAgent" && needsCli(instance) && !serverTerminal(cloudHome);
 }
 
 export function CommandRow({
@@ -288,133 +280,6 @@ export function EngineWarningNotice({
   );
 }
 
-function ManagedEngineSetup({ instance, signInOnly }: { instance: InstanceInfo; signInOnly: boolean }) {
-  const { refreshInstances, refreshModels } = useStore();
-  const [busy, setBusy] = useState<"install" | "signin" | "complete" | "check" | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [flow, setFlow] = useState<{ flowId: string; authorizationUrl: string } | null>(null);
-  const [callbackUrl, setCallbackUrl] = useState("");
-  const managed = instance.install!.managed!;
-
-  useEffect(() => {
-    if (!flow || instance.snapshot.authenticated) return;
-    const timer = window.setInterval(() => void refreshInstances(), 2_000);
-    return () => window.clearInterval(timer);
-  }, [flow, instance.snapshot.authenticated, refreshInstances]);
-
-  const run = async (kind: NonNullable<typeof busy>, action: () => Promise<void>) => {
-    setBusy(kind);
-    setError(null);
-    try { await action(); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
-    finally { setBusy(null); }
-  };
-
-  const install = () => run("install", async () => {
-    try {
-      await api(`/api/instances/${encodeURIComponent(instance.instanceId)}/install`, { method: "POST" });
-    } finally {
-      // Keep the latest setup reason without replacing the install error if
-      // the status refresh also fails.
-      await refreshInstances().catch(() => {});
-    }
-  });
-
-  const signIn = () => run("signin", async () => {
-    const { auth } = await api(`/api/instances/${encodeURIComponent(instance.instanceId)}/auth/start`, { method: "POST" });
-    if (auth.phase === "succeeded") {
-      await refreshInstances();
-      await refreshModels(instance.instanceId);
-      return;
-    }
-    if (!auth.flowId || !auth.authorizationUrl) throw new Error(t("engineSetup.googleNoLink"));
-    setFlow({ flowId: auth.flowId, authorizationUrl: auth.authorizationUrl });
-    if (window.ogb?.openExternal) await window.ogb.openExternal(auth.authorizationUrl);
-    else window.open(auth.authorizationUrl, "_blank", "noopener,noreferrer");
-  });
-
-  const complete = () => run("complete", async () => {
-    if (!flow) return;
-    await api(`/api/instances/${encodeURIComponent(instance.instanceId)}/auth/complete`, {
-      method: "POST",
-      body: JSON.stringify({ flowId: flow.flowId, callbackUrl }),
-    });
-    setCallbackUrl("");
-    await refreshInstances();
-    await refreshModels(instance.instanceId);
-  });
-
-  const check = () => run("check", async () => {
-    await refreshInstances();
-    await refreshModels(instance.instanceId);
-  });
-
-  if (!signInOnly) {
-    return (
-      <div className="mt-3">
-        <button
-          type="button"
-          disabled={busy !== null}
-          onClick={() => void install()}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-[12.5px] font-semibold text-white hover:brightness-110 disabled:cursor-wait disabled:opacity-70"
-        >
-          {busy === "install" ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-          {busy === "install" ? t("engineSetup.installing") : managed.label}
-        </button>
-        <p className="mt-1.5 text-center text-[11px] text-ink-tertiary">
-          {t("engineSetup.downloadNote", { mb: Math.ceil(managed.downloadBytes / 1024 / 1024) })}
-        </p>
-        {error && <p className="mt-2 text-[11.5px] text-danger">{error}</p>}
-      </div>
-    );
-  }
-
-  return (
-    <div className="mt-3 space-y-2">
-      <button
-        type="button"
-        disabled={busy !== null}
-        onClick={() => void signIn()}
-        className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2 text-[12.5px] font-semibold text-white hover:brightness-110 disabled:cursor-wait disabled:opacity-70"
-      >
-        {busy === "signin" ? <Loader2 size={14} className="animate-spin" /> : <LogIn size={14} />}
-        {busy === "signin"
-          ? t("engineSetup.startingGoogle")
-          : flow
-            ? t("engineSetup.openGoogleAgain")
-            : t("engineSetup.signInGoogle")}
-      </button>
-      {busy === "signin" && <p role="status" className="text-[11.5px] text-ink-secondary">{t("engineSetup.antigravitySlow")}</p>}
-      {flow && (
-        <>
-          <button type="button" onClick={() => void check()} className="w-full rounded-lg bg-control px-3 py-2 text-[12px] font-semibold text-ink hover:bg-raised-hover">
-            {busy === "check" ? t("common.checking") : t("engineSetup.finishedSignIn")}
-          </button>
-          <details className="rounded-lg border border-hairline/50 bg-app px-2.5 py-2 text-[11.5px] text-ink-secondary">
-            <summary className="cursor-pointer select-none">{t("engineSetup.otherComputer")}</summary>
-            <p className="mt-2 leading-relaxed">{t("engineSetup.otherComputerHint")}</p>
-            <input
-              value={callbackUrl}
-              onChange={(event) => setCallbackUrl(event.target.value)}
-              placeholder="http://127.0.0.1:…/?code=…"
-              className="mt-2 w-full rounded-md border border-hairline bg-inset px-2 py-1.5 text-[11px] text-ink outline-none focus:border-accent"
-            />
-            <button
-              type="button"
-              disabled={!callbackUrl.trim() || busy !== null}
-              onClick={() => void complete()}
-              className="mt-2 w-full rounded-md bg-control px-2 py-1.5 font-medium text-ink disabled:opacity-50"
-            >
-              {busy === "complete" ? t("engineSetup.sending") : t("engineSetup.sendRedirect")}
-            </button>
-          </details>
-        </>
-      )}
-      {error && <p className="text-[11.5px] text-danger">{error}</p>}
-    </div>
-  );
-}
-
 /** Engines that run on a pasted API key. Their setup is the key row in
  * Settings → API keys, never a terminal command or a sign-in. Claude on the
  * workspace key still needs its CLI first, which the install card covers. */
@@ -433,32 +298,6 @@ export function hasSavedApiKey(instance: InstanceInfo): boolean {
 function apiKeySetup(instance: InstanceInfo): boolean {
   return (isApiKeyEngine(instance) || instance.install?.settings === "connections") && !instance.snapshot.authenticationUnavailableReason
     && (instance.snapshot.state !== "available" || instance.snapshot.authenticated === false);
-}
-
-function GrokKeyInstead({ className, unframed }: { className?: string; unframed: boolean }) {
-  const { dispatch } = useStore();
-  const remote = window.ogb?.remoteClient?.active === true;
-  return (
-    <div data-engine-setup-key-instead className={cn(!unframed && "rounded-xl border border-hairline/40 bg-control/30 p-3", className)}>
-      <div className="flex items-start gap-2.5">
-        <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-inset text-ink-secondary">
-          <KeyRound size={14} />
-        </span>
-        <p className="min-w-0 text-[12.5px] leading-relaxed text-ink">{t("engineSetup.grok.notInstalled")}</p>
-      </div>
-      {/* a remote client's Settings has no API keys to open (ApiKeyEngineSetup) */}
-      {!remote && (
-        <button
-          type="button"
-          onClick={() => dispatch({ type: "toggleAppSettings", open: true, section: "connections" })}
-          className="mt-3 flex items-center gap-1.5 rounded-lg bg-raised px-3 py-1.5 text-[12.5px] font-medium text-ink hover:bg-raised-hover"
-        >
-          <KeyRound size={13} aria-hidden="true" />
-          {t("engineSetup.grok.addKey")}
-        </button>
-      )}
-    </div>
-  );
 }
 
 /** `configured`: the key is saved, so the card offers to change it instead.
@@ -544,25 +383,17 @@ export function EngineSetup({
       ? t(DEVICE_SIGN_IN_COPY[provider].description)
       : pasteSignIn
       ? t("engineSetup.claude.description")
-      : install?.managed
-      ? t("engineSetup.managedSignIn")
       : t("engineSetup.terminalSignInCheck")
     : intent === "inject"
       ? t("engineSetup.injectDesc")
       : install?.server
         ? t("engineSetup.serverInstallDesc")
-      : install?.managed
-        ? t("engineSetup.managedDesc")
       : signInCommand
         ? t("engineSetup.installDescSignIn")
         : t("engineSetup.installDesc"));
 
   if (apiKeySetup(instance)) {
     return <ApiKeyEngineSetup instance={instance} className={className} unframed={unframed} />;
-  }
-
-  if (intent === "cloud" && grokKeyInstead(instance, cloudHome)) {
-    return <GrokKeyInstead className={className} unframed={unframed} />;
   }
 
   // Some engines are configured elsewhere (for example, a cloud computer
@@ -597,23 +428,11 @@ export function EngineSetup({
       )}
 
       {deviceSignIn || browserSignIn ? (
-        <>
-          <DeviceSignIn key={instance.instanceId} instanceId={instance.instanceId} browserPkce={browserSignIn} provider={provider} />
-          {/* Grok keeps its terminal sign-in for people who prefer one, where
-              a terminal runs on this server; the code above needs none. */}
-          {deviceSignIn && provider === "grok" && signInCommand && serverTerminal(cloudHome) && (
-            <details className="mt-2 rounded-lg border border-hairline/50 bg-app px-2.5 py-2 text-[11.5px] text-ink-secondary">
-              <summary className="cursor-pointer select-none">{t("engineSetup.preferTerminal")}</summary>
-              <CommandRow command={signInCommand} actionLabel={t("engineSetup.openSignIn")} compact />
-            </details>
-          )}
-        </>
+        <DeviceSignIn key={instance.instanceId} instanceId={instance.instanceId} browserPkce={browserSignIn} provider={provider} />
       ) : pasteSignIn ? (
         <ClaudeSignIn key={instance.instanceId} instanceId={instance.instanceId} />
       ) : install.server && !signInOnly ? (
         <ServerEngineInstall instance={instance} mode="install" command={installCommand} />
-      ) : install.managed ? (
-        <ManagedEngineSetup instance={instance} signInOnly={signInOnly} />
       ) : command ? (
         <CommandRow
           command={command}
@@ -638,7 +457,7 @@ export function EngineSetup({
         </p>
       )}
 
-      {(install.command || signInCommand) && !deviceSignIn && !browserSignIn && !pasteSignIn && !install.managed && (
+      {(install.command || signInCommand) && !deviceSignIn && !browserSignIn && !pasteSignIn && (
         <div className="mt-3 border-t border-hairline/40 pt-2">
           <p className="mb-1 text-[11.5px] leading-relaxed text-ink-secondary">{t("engineSetup.sameMachine")}</p>
           {needsCli(instance) && <p className="mb-1 text-[11.5px] leading-relaxed text-ink-secondary">{t("engineSetup.pathHint")}</p>}

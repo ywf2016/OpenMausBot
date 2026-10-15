@@ -187,7 +187,7 @@ export function SimpleBotPanel({
   const { patch, approvalMode, engine, trustedModesAvailable } = derived;
   // Match the full selector: old Antigravity Auto still executes as Ask.
   // Display that behavior without changing the saved mode or granting Full.
-  const displayedApprovalMode = engine?.driverKind === "antigravityAgent" && approvalMode === "auto" ? "ask" : approvalMode;
+  const displayedApprovalMode = approvalMode;
 
   // Ask is always offered; "Decide for me" is the provider's own Auto, which
   // a few engines do not have.

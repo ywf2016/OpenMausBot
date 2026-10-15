@@ -1,5 +1,5 @@
 // Subscription allowance for the engines OpenMausBot already signs in
-// (Claude, Codex, Grok). Parsers are pure. The fetcher takes fetch and a
+// (Claude, Codex). Parsers are pure. The fetcher takes fetch and a
 // credential reader so tests never touch the network or a real login file.
 // Access tokens stay in the request header only — never in the JSON result.
 import { execFile } from "node:child_process";
@@ -11,7 +11,7 @@ import { resolveClaudeConfigDir } from "./drivers/claude.ts";
 import { codexHome } from "./drivers/codex-identity.ts";
 import { harnessHome } from "./env-path.ts";
 
-export type PlanDriver = "claude" | "codex" | "grok";
+export type PlanDriver = "claude" | "codex";
 
 export interface PlanWindow {
   available: boolean;
@@ -114,9 +114,6 @@ const CLAUDE_MODEL_FAMILIES = ["opus", "sonnet", "haiku"];
 
 const CLAUDE_USAGE_URL = "https://api.anthropic.com/api/oauth/usage";
 const CODEX_USAGE_URL = "https://chatgpt.com/backend-api/wham/usage";
-const GROK_CREDITS_URL = "https://cli-chat-proxy.grok.com/v1/billing?format=credits";
-const GROK_BILLING_URL = "https://cli-chat-proxy.grok.com/v1/billing";
-const GROK_SETTINGS_URL = "https://cli-chat-proxy.grok.com/v1/settings";
 
 const FIVE_HOUR_MIN_SECONDS = 3 * 3600;
 const FIVE_HOUR_MAX_SECONDS = 8 * 3600;
@@ -128,13 +125,11 @@ const MONTH_MAX_SECONDS = 32 * 86400;
 const DRIVER_OF: Record<string, PlanDriver> = {
   claudeAgent: "claude",
   codex: "codex",
-  grokAgent: "grok",
 };
 
 const PRODUCT_NAME: Record<PlanDriver, string> = {
   claude: "Claude",
   codex: "Codex",
-  grok: "Grok",
 };
 
 export function planAccountsFromInstances(instances: InstanceConfigMap): PlanAccount[] {
@@ -229,8 +224,7 @@ export function fileCredentialReader(source: CredentialSource): CredentialReader
       const merged: NodeJS.ProcessEnv = { ...env, ...account.environment };
       const at = now();
       if (account.driver === "claude") return readClaudeCredential(account, merged, source, at);
-      if (account.driver === "codex") return readCodexCredential(merged, source.readText, at);
-      return readGrokCredential(merged, source.readText, at);
+      return readCodexCredential(merged, source.readText, at);
     },
   };
 }
@@ -803,8 +797,7 @@ async function fetchProvider(account: PlanAccount, deps: PlanUsageDeps): Promise
   if (credential.expired || !credential.token) return errorRow(account, signInAgain(account.driver));
   try {
     if (account.driver === "claude") return await fetchClaude(account, credential.token, deps);
-    if (account.driver === "codex") return await fetchCodex(account, credential.token, credential.accountId, deps);
-    return await fetchGrok(account, credential.token, deps);
+    return await fetchCodex(account, credential.token, credential.accountId, deps);
   } catch {
     return errorRow(account, couldNotReach(account.driver));
   }
@@ -878,30 +871,4 @@ async function fetchCodex(
     return errorRow(account, result.status === 0 || result.status >= 500 ? couldNotReach("codex") : unexpectedUsage("codex"));
   }
   return okRow(account, parseCodexUsage(result.body));
-}
-
-async function fetchGrok(account: PlanAccount, token: string, deps: PlanUsageDeps): Promise<PlanProviderRow> {
-  const headers = {
-    Authorization: `Bearer ${token}`,
-    Accept: "application/json",
-    "X-XAI-Token-Auth": "xai-grok-cli",
-  };
-  const timeout = deps.timeoutMs ?? PROVIDER_TIMEOUT_MS;
-  const [credits, billing, settings] = await Promise.all([
-    fetchJson(deps.fetch, GROK_CREDITS_URL, headers, timeout),
-    fetchJson(deps.fetch, GROK_BILLING_URL, headers, timeout),
-    fetchJson(deps.fetch, GROK_SETTINGS_URL, headers, timeout),
-  ]);
-  if (authRejected(credits.status) || (authRejected(billing.status) && !credits.ok)) {
-    return errorRow(account, signInAgain("grok"));
-  }
-  const creditsBody = credits.ok ? credits.body : null;
-  const billingBody = billing.ok && !authRejected(billing.status) ? billing.body : null;
-  if (creditsBody === null && billingBody === null) {
-    return errorRow(account, credits.status === 0 || credits.status >= 500 || billing.status === 0 || billing.status >= 500
-      ? couldNotReach("grok")
-      : unexpectedUsage("grok"));
-  }
-  const windows = parseGrokUsage(creditsBody, billingBody ?? undefined, settings.ok ? settings.body : undefined);
-  return okRow(account, windows);
 }

@@ -22,15 +22,10 @@ async function requestJson(req: IncomingMessage): Promise<unknown> {
 const instances: InstanceInfo[] = [
   ["claude", "claudeAgent", "Claude", true, "2.1.8"],
   ["codex", "codex", "Codex", true, "0.122.0"],
-  ["grok", "grokAgent", "Grok", true, "grok"],
   ["opencode", "opencodeGo", "OpenCode", true, "1.18.25"],
-  ["antigravity", "antigravityAgent", "Antigravity", false, "0.1.0"],
   ["kimi", "kimiAgent", "Kimi", false, ""],
-  ["droid", "droidAgent", "Droid", false, ""],
   ["cursor", "cursorAgent", "Cursor", false, ""],
-  ["hermes", "hermesAgent", "Hermes", false, ""],
   ["qwen", "qwenAgent", "Qwen", false, ""],
-  ["pi", "piAgent", "Pi", false, ""],
 ].map(([id, driver, name, ready, version]) => ({
   instanceId: String(id), driverKind: String(driver), displayName: String(name),
   cliDefault: String(id),
@@ -42,10 +37,9 @@ instances[0].snapshot.account = { email: "personal@example.test" };
 instances[0].claudeAccount = { configDir: "", isDefault: true, signInCommand: "echo 'Preview only'", signInShell: "sh" };
 instances[1].authentication = { method: "device-code", signOut: true };
 instances[1].snapshot.account = { email: "work@example.test" };
-instances[4].install = { managed: { label: "Install Antigravity", downloadBytes: 200_000_000 } };
-instances[5].install!.server = { package: "kimi-fixture" };
-instances[3].install!.server = { package: "opencode-fixture" };
-instances[3].snapshot.update = { title: "OpenCode update available", message: "A sample update for this isolated preview.", command: "echo 'Preview only'" };
+instances[3].install!.server = { package: "kimi-fixture" };
+instances[2].install!.server = { package: "opencode-fixture" };
+instances[2].snapshot.update = { title: "OpenCode update available", message: "A sample update for this isolated preview.", command: "echo 'Preview only'" };
 instances.push({ ...instances[0], instanceId: "claude-local", displayName: "Claude · Local", access: "custom", claudeAccount: undefined, snapshot: { state: "available", authenticated: false } });
 const chatgptPlan: InstanceInfo = {
   instanceId: "chatgpt", driverKind: "codex", displayName: "ChatGPT plan", cliDefault: "codex", access: "subscription",
@@ -55,11 +49,11 @@ const chatgptPlan: InstanceInfo = {
 };
 instances.push(chatgptPlan);
 instances.push({
-  instanceId: "cline", driverKind: "clineAgent", displayName: "Cline", cliDefault: "cline",
-  snapshot: { state: "available", authenticated: true, version: "3.0.70" },
-  models: { default: "cline-default", options: [{ id: "cline-default", label: "Cline default (configured)" }] },
-  install: { command: { darwin: "echo 'Preview only'", linux: "echo 'Preview only'", win32: "echo Preview only" },
-    needsNode: true, signInCommand: "echo 'Preview only'", docsUrl: "https://docs.cline.bot/usage/acp" },
+  instanceId: "openai-compat", driverKind: "openai-compat", displayName: "OpenAI-compatible", cliDefault: "",
+  access: "api",
+  snapshot: { state: "available", authenticated: false },
+  models: { default: "", options: [] },
+  install: { settings: "connections" },
 });
 const controller = new AbortController();
 const cancel = () => controller.abort();
@@ -101,8 +95,9 @@ try {
           return;
         }
         if (path === "/__fixture/connect" && req.method === "POST") {
-          instances[4].snapshot.authenticated = !instances[4].snapshot.authenticated;
-          instances[4].snapshot.account = instances[4].snapshot.authenticated ? { email: "google@example.test", method: "login" } : undefined;
+          const kimi = instances.find((entry) => entry.instanceId === "kimi")!;
+          kimi.snapshot.authenticated = !kimi.snapshot.authenticated;
+          kimi.snapshot.account = kimi.snapshot.authenticated ? { email: "kimi@example.test", method: "login" } : undefined;
           return json({ ok: true });
         }
         if (path === "/__fixture/chatgpt" && req.method === "POST") {

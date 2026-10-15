@@ -41,7 +41,6 @@ function chain(target: string): Step[] {
 const shipped = () => all.filter(s => s.name !== "build" && s.name !== "edge").flatMap(s => s.steps);
 const npmInstall = (step: Step) => step.op === "RUN" && /\bnpm install\b/.test(step.args);
 const browserRun = () => chain("runtime").find(step => step.op === "RUN" && step.args.includes("agent-browser install"))!;
-const grokRun = (steps: Step[]) => steps.findIndex(step => step.op === "RUN" && step.args.includes("https://x.ai/cli/install.sh"));
 // The keys step parses Chrome for Testing's JSON with jq, as on GitHub's runners.
 const jq = process.platform === "win32" ? "" : spawnSync("sh", ["-c", "command -v jq"], { encoding: "utf8" }).stdout.trim();
 
@@ -108,35 +107,22 @@ describe("container images", () => {
     expect(chain("server").filter(step => step.args.includes("--from=build")).every(step => step.args.startsWith("--from=build --chown=maus:maus "))).toBe(true);
   });
 
-  it("installs the pinned Grok in Cloud home only, beneath the engines and the app, from a home the same step removes", () => {
+  it("does not install the removed Grok CLI in Cloud home", () => {
     const home = chain("cloud-home");
-    const grok = grokRun(home);
-    expect(grok).toBeGreaterThan(-1);
-    expect(home.slice(0, grok)).toContainEqual({ op: "ARG", args: "GROK_VERSION=1.0.41" });
-    // pinned, so an engine release or a code change does not re-pull it
-    expect(grok).toBeLessThan(home.findLastIndex(npmInstall));
-    expect(grok).toBeGreaterThan(home.indexOf(browserRun()));
-    expect(grok).toBeLessThan(home.findIndex(step => step.args.includes("--from=build")));
-    const { args } = home[grok];
-    // the installer and the version check write only to a throwaway home, gone by the end of the step
-    expect(args.match(/\bHOME=\S+/g)).toEqual(["HOME=/tmp/grok-install", "HOME=/tmp/grok-install"]);
-    expect(args).toMatch(/ && install -m 0755 "\$\(readlink -f \/tmp\/grok-install\/\.grok\/bin\/grok\)" \/usr\/local\/bin\/grok /);
-    expect(args).toContain('grep -qF "grok $GROK_VERSION "');
-    expect(args).toMatch(/ && rm -rf \/tmp\/grok-install; +fi$/);
-    expect(grokRun(chain("server"))).toBe(-1);
+    expect(home.some(step => step.op === "ARG" && step.args.startsWith("GROK_VERSION"))).toBe(false);
+    expect(home.some(step => step.op === "RUN" && step.args.includes("https://x.ai/cli/install.sh"))).toBe(false);
   });
 
-  it("scans the saved images for every throwaway build directory, and for one Grok", () => {
+  it("scans the saved images for every throwaway build directory", () => {
     const scan = (workflow.jobs["build-and-smoke"].steps as { name?: string; run?: string }[])
       .find(step => step.name?.startsWith("Prove each image ships its files once"))!.run!;
     const cache = new RegExp(/cache = re\.compile\(r"(.*)"\)/.exec(scan)![1]);
     const removed = shipped().flatMap(step => [...step.args.matchAll(/\brm -rf ([^;&|]+)/g)].flatMap(match => match[1].trim().split(/\s+/)));
     const throwaway = [...new Set(removed.filter(path => path.startsWith("/tmp/")))].sort();
-    expect(throwaway).toEqual(["/tmp/grok-install", "/tmp/node-compile-cache", "/tmp/npm-cache", "/tmp/omb-build-home"]);
+    expect(throwaway).toEqual(["/tmp/node-compile-cache", "/tmp/npm-cache", "/tmp/omb-build-home"]);
     for (const path of throwaway) expect(cache.test(`${path.slice(1)}/leftover`), path).toBe(true);
-    expect(scan).toContain('grok = files["usr/local/bin/grok"]');
+    expect(scan).not.toContain('grok = files["usr/local/bin/grok"]');
   });
-
   it("keeps each image's runtime contract", () => {
     const last = (steps: Step[], op: string) => steps.filter(step => step.op === op).at(-1)?.args;
     const server = chain("server");

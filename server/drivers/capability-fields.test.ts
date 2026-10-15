@@ -12,7 +12,6 @@ import { BUILT_IN_DRIVERS } from "./builtIn.ts";
 import { ClaudeDriver } from "./claude.ts";
 import { CodexDriver } from "./codex.ts";
 import { OpenAICompatDriver } from "./openai-compat.ts";
-import { PiDriver } from "./pi.ts";
 
 const created: ProviderInstance[] = [];
 const onBoat = (instance: ProviderInstance) =>
@@ -69,11 +68,6 @@ describe("typed capability fields for the cloud computer", () => {
       config: CodexDriver.defaultConfig(),
     }));
     expect(onBoat(codex)).toBe(true);
-    const pi = await keep(PiDriver.create({
-      instanceId: "caps-pi", displayName: "Caps Pi", environment: {}, enabled: true,
-      config: PiDriver.defaultConfig(),
-    }));
-    expect(onBoat(pi)).toBe(true);
   });
 
   it("registers no driver that runs a turn somewhere other than its own engine", async () => {
