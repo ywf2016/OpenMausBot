@@ -26,15 +26,20 @@ describe("the Computer engine is not offered", () => {
         claude: { driver: "claudeAgent" },
         computer: { driver: "boxAgent", environment: { BOX_TOKEN: "box_instance" } },
         myBoat: { driver: "boxAgent", displayName: "My Boat" },
+        grok: { driver: "grokAgent" },
+        droid: { driver: "droidAgent" },
       },
     };
     for (const map of [instanceConfigs(cfg), persistableInstanceConfigs(cfg)]) {
       expect(Object.keys(map)).toContain("claude");
       expect(map).not.toHaveProperty("computer");
       expect(map).not.toHaveProperty("myBoat");
+      expect(map).not.toHaveProperty("grok");
+      expect(map).not.toHaveProperty("droid");
     }
     // The caller's saved map is never changed in place.
     expect(cfg.instances).toHaveProperty("computer");
+    expect(cfg.instances).toHaveProperty("grok");
   });
 
   it("names every id the engine had, and leaves an id the person reused for another engine", () => {

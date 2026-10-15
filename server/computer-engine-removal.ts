@@ -25,11 +25,38 @@ export function removedComputerInstanceIds(saved: InstanceConfigMap | undefined)
   return ids;
 }
 
+/** Drivers that used to ship in the product fleet and must not reappear as
+ * unavailable shadows when an older config.json still names them. Keep this
+ * list in sync with anything removed from `BUILT_IN_DRIVERS`. */
+export const REMOVED_ENGINE_DRIVERS = new Set<string>([
+  REMOVED_COMPUTER_DRIVER,
+  "piAgent",
+  "meta",
+  "hermesAgent",
+  "museCode",
+  "droidAgent",
+  "groq",
+  "antigravityAgent",
+  "cerebras",
+  "clineAgent",
+  "mistral",
+  "geminiAgent",
+  "minimax",
+  "grokAgent",
+  "grok",
+]);
+
 /** A fleet without the removed engine: a saved entry for it is dropped, so
  * it is never offered and the next save leaves it off disk. */
 export function withoutComputerEngine(map: InstanceConfigMap): InstanceConfigMap {
+  return withoutRemovedEngines(map);
+}
+
+/** Drop every saved entry whose driver was removed from the product, so
+ * Settings does not list them as "needs setup" shadows. Mutates `map`. */
+export function withoutRemovedEngines(map: InstanceConfigMap): InstanceConfigMap {
   for (const [id, entry] of Object.entries(map)) {
-    if (entry.driver === REMOVED_COMPUTER_DRIVER) delete map[id];
+    if (REMOVED_ENGINE_DRIVERS.has(entry.driver)) delete map[id];
   }
   return map;
 }

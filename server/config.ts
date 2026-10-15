@@ -9,7 +9,7 @@ import { z } from "zod";
 import { normalizeImageGenerationUrl, type ImageGenerationConfig } from "../shared/image-generation.ts";
 
 import { writeFileAtomic } from "./atomic.ts";
-import { withoutComputerEngine } from "./computer-engine-removal.ts";
+import { withoutRemovedEngines } from "./computer-engine-removal.ts";
 import { newBotDefaultsSchema, type NewBotDefaults } from "./new-bot-defaults.ts";
 import { EFFORT_LEVELS, type EffortLevel, type LiveSettings } from "../shared/wire.ts";
 import { isModelVariant, type InstanceConfigMap, type ModelSelection } from "./contracts.ts";
@@ -1724,8 +1724,9 @@ export function instanceConfigs(cfg: AppConfig): InstanceConfigMap {
     ...CUSTOM_ONLY,
   } as const;
   const configured = cfg.instances && Object.keys(cfg.instances).length ? cfg.instances : null;
-  // A fleet saved before the Computer engine was removed may still name it.
-  const map: InstanceConfigMap = withoutComputerEngine(configured ? { ...configured } : { ...DEFAULT_FLEET });
+  // A fleet saved before engines were removed may still name them; drop those
+  // so they never show up as unavailable shadows in Settings.
+  const map: InstanceConfigMap = withoutRemovedEngines(configured ? { ...configured } : { ...DEFAULT_FLEET });
   // Product fleets pick up newly shipped engines. A one-off test/shadow map
   // (no claude/codex/kimi/cursor) is left exactly as written.
   if (
