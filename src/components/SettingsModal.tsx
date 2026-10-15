@@ -84,25 +84,25 @@ export const SECTIONS: Array<{
   icon: typeof User;
   keywords: string[];
 }> = [
-  { id: "general", group: "you", labelKey: "settings.section.general", icon: User, keywords: ["profile", "name", "email", "about me", "about", "suggestions", "suggested", "memory", "analytics", "updates", "effort", "new bots", "reasoning", "threads", "parallel", "concurrency", "cleanup", "retention", "event log", "event-log", "log size", "automatic recovery", "backup model", "fallback", "routines", "conversation", "schedule"] },
-  { id: "appearance", group: "you", labelKey: "settings.section.appearance", icon: Palette, keywords: ["skin", "theme", "appearance", "tools", "tool calls", "threads", "show threads", "hide threads", "sidebar", "density", "compact", "comfortable", "avatars", "display", "run", "this run", "run card", "commands", "notifications", "sound", "sounds", "mute", "silent", "chime", "pinned", "circles", "universal", "groups", "top", "send", "enter", "return", "shift+enter", "ctrl+enter", "cmd+enter", "⌘+enter", "new line", "keyboard", "ime", "japanese", "bubble", "bubbles", "message color", "my messages"] },
-  { id: "companion", group: "you", labelKey: "settings.section.companion", icon: TabletSmartphone, keywords: ["companion", "device", "phone", "desktop", "client", "host", "pair", "pairing", "mobile", "https", "secure", "tailscale", "wifi", "remote", "advanced", "domain", "dns", "self-hosted", "server", "caddy"] },
-  { id: "engines", group: "ai", labelKey: "settings.section.engines", icon: Terminal, keywords: ["models", "model providers", "engines", "claude", "codex", "grok", "providers", "cli", "sign in", "subscription"] },
-  { id: "connections", group: "ai", labelKey: "settings.section.connections", icon: KeyRound, keywords: ["keys", "api", "api key", "api keys", "connections", "composio", "box", "xai", "mistral", "cerebras", "meta", "muse", "vps", "router", "openrouter", "base url", "openai", "anthropic", "groq", "opencode", "provider"] },
-  { id: "decisionModel", group: "ai", labelKey: "settings.section.decisionModel", icon: Zap, keywords: ["decision", "jev", "typesafe", "routing", "auto", "rooms", "who answers"] },
-  { id: "skills", group: "ai", labelKey: "settings.section.skills", icon: BookOpen, keywords: ["skills", "library", "assign", "agent skills", "skill md"] },
-  { id: "desktopWorkspaces", group: "computers", labelKey: "settings.section.desktopWorkspaces", icon: Building2, keywords: ["workspace", "cloud", "hosted", "vps", "server", "servers", "connect", "pair", "switch", "local"] },
-  { id: "computer", group: "computers", labelKey: "settings.section.computer", icon: Monitor, keywords: ["vm", "virtual", "desktop", "browser", "built-in browser", "profiles", "browser profiles"] },
-  { id: "logins", group: "computers", labelKey: "settings.section.logins", icon: LockKeyhole, keywords: ["logins", "login", "passwords", "password", "sign in", "2fa", "one-time code", "totp", "fill_login", "1password", "vault"] },
-  { id: "cloudAccount", group: "account", labelKey: "settings.section.cloudAccount", icon: User, keywords: ["cloud", "account", "personal", "sign in", "pro", "subscription", "billing"] },
-  { id: "organization", group: "account", labelKey: "settings.section.organization", icon: Building2, keywords: ["company", "organization", "organisation", "sign in", "enroll", "managed", "models", "disconnect"] },
-  { id: "usage", group: "account", labelKey: "settings.section.usage", icon: Coins, keywords: ["tokens", "cost", "billing", "plan", "quota", "remaining", "weekly", "5-hour", "model", "used"] },
-  { id: "backups", group: "account", labelKey: "settings.section.backups", icon: Archive, keywords: ["export", "import", "restore", "full backup", "password", "recovery"] },
-  { id: "people", group: "account", labelKey: "settings.section.people", icon: Users, keywords: ["people", "users", "invite", "sign in", "members", "admins", "access"] },
-  { id: "activity", group: "account", labelKey: "settings.section.activity", icon: ScrollText, keywords: ["activity", "audit", "log", "history", "who changed", "approvals", "decisions", "admin"] },
-  { id: "workspaces", group: "account", labelKey: "settings.section.workspaces", icon: Building2, keywords: ["clients", "tenants", "fleet", "workspaces", "installation", "installations"] },
-  { id: "experimental", group: "account", labelKey: "settings.section.experimental", icon: FlaskConical, keywords: ["early", "preview", "learn", "skill", "authoring"] },
-];
+    { id: "general", group: "you", labelKey: "settings.section.general", icon: User, keywords: ["profile", "name", "email", "about me", "about", "suggestions", "suggested", "memory", "analytics", "updates", "effort", "new bots", "reasoning", "threads", "parallel", "concurrency", "cleanup", "retention", "event log", "event-log", "log size", "automatic recovery", "backup model", "fallback", "routines", "conversation", "schedule"] },
+    { id: "appearance", group: "you", labelKey: "settings.section.appearance", icon: Palette, keywords: ["skin", "theme", "appearance", "tools", "tool calls", "threads", "show threads", "hide threads", "sidebar", "density", "compact", "comfortable", "avatars", "display", "run", "this run", "run card", "commands", "notifications", "sound", "sounds", "mute", "silent", "chime", "pinned", "circles", "universal", "groups", "top", "send", "enter", "return", "shift+enter", "ctrl+enter", "cmd+enter", "⌘+enter", "new line", "keyboard", "ime", "japanese", "bubble", "bubbles", "message color", "my messages"] },
+    { id: "companion", group: "you", labelKey: "settings.section.companion", icon: TabletSmartphone, keywords: ["companion", "device", "phone", "desktop", "client", "host", "pair", "pairing", "mobile", "https", "secure", "tailscale", "wifi", "remote", "advanced", "domain", "dns", "self-hosted", "server", "caddy"] },
+    { id: "engines", group: "ai", labelKey: "settings.section.engines", icon: Terminal, keywords: ["models", "model providers", "engines", "claude", "codex", "grok", "providers", "cli", "sign in", "subscription"] },
+    { id: "connections", group: "ai", labelKey: "settings.section.connections", icon: KeyRound, keywords: ["keys", "api", "api key", "api keys", "connections", "composio", "box", "xai", "vps", "router", "openrouter", "base url", "openai", "anthropic", "opencode", "provider"] },
+    { id: "decisionModel", group: "ai", labelKey: "settings.section.decisionModel", icon: Zap, keywords: ["decision", "jev", "typesafe", "routing", "auto", "rooms", "who answers"] },
+    { id: "skills", group: "ai", labelKey: "settings.section.skills", icon: BookOpen, keywords: ["skills", "library", "assign", "agent skills", "skill md"] },
+    { id: "desktopWorkspaces", group: "computers", labelKey: "settings.section.desktopWorkspaces", icon: Building2, keywords: ["workspace", "cloud", "hosted", "vps", "server", "servers", "connect", "pair", "switch", "local"] },
+    { id: "computer", group: "computers", labelKey: "settings.section.computer", icon: Monitor, keywords: ["vm", "virtual", "desktop", "browser", "built-in browser", "profiles", "browser profiles"] },
+    { id: "logins", group: "computers", labelKey: "settings.section.logins", icon: LockKeyhole, keywords: ["logins", "login", "passwords", "password", "sign in", "2fa", "one-time code", "totp", "fill_login", "1password", "vault"] },
+    { id: "cloudAccount", group: "account", labelKey: "settings.section.cloudAccount", icon: User, keywords: ["cloud", "account", "personal", "sign in", "pro", "subscription", "billing"] },
+    { id: "organization", group: "account", labelKey: "settings.section.organization", icon: Building2, keywords: ["company", "organization", "organisation", "sign in", "enroll", "managed", "models", "disconnect"] },
+    { id: "usage", group: "account", labelKey: "settings.section.usage", icon: Coins, keywords: ["tokens", "cost", "billing", "plan", "quota", "remaining", "weekly", "5-hour", "model", "used"] },
+    { id: "backups", group: "account", labelKey: "settings.section.backups", icon: Archive, keywords: ["export", "import", "restore", "full backup", "password", "recovery"] },
+    { id: "people", group: "account", labelKey: "settings.section.people", icon: Users, keywords: ["people", "users", "invite", "sign in", "members", "admins", "access"] },
+    { id: "activity", group: "account", labelKey: "settings.section.activity", icon: ScrollText, keywords: ["activity", "audit", "log", "history", "who changed", "approvals", "decisions", "admin"] },
+    { id: "workspaces", group: "account", labelKey: "settings.section.workspaces", icon: Building2, keywords: ["clients", "tenants", "fleet", "workspaces", "installation", "installations"] },
+    { id: "experimental", group: "account", labelKey: "settings.section.experimental", icon: FlaskConical, keywords: ["early", "preview", "learn", "skill", "authoring"] },
+  ];
 
 /** A page of the Simple rail: one or more of the pages above, stacked. */
 export type SimpleSettingsPage = {
@@ -189,7 +189,7 @@ function ProfileFields() {
       .then((config: ConfigStatus) => {
         if (config.profile) dispatch({ type: "profileSaved", profile: { name: config.profile.name, email: config.profile.email } });
       })
-      .catch(() => {});
+      .catch(() => { });
   };
 
   const inputClass =
@@ -234,9 +234,9 @@ export function UpdatesRow() {
               : t("settings.updates.ready", { app: brand().name, version: s.version ?? "" })
             : s.status === "installing"
               ? s.message ||
-                (s.installMode === "handoff"
-                  ? t("settings.updates.openingTerminal")
-                  : t("settings.updates.restarting"))
+              (s.installMode === "handoff"
+                ? t("settings.updates.openingTerminal")
+                : t("settings.updates.restarting"))
               : s.status === "handed-off"
                 ? t("settings.updates.handedOff")
                 : s.status === "error"
@@ -357,11 +357,13 @@ function ReplayAppTourButton() {
           setFailed(false);
           void api("/api/config", {
             method: "PUT",
-            body: JSON.stringify({ onboarding: {
-              // Upgraded users may have completed only the legacy browser gate.
-              ...(!state.config?.onboarding?.completedAt ? completionPatch().onboarding : {}),
-              hintsSeen: withTourReset(state.config?.onboarding),
-            } }),
+            body: JSON.stringify({
+              onboarding: {
+                // Upgraded users may have completed only the legacy browser gate.
+                ...(!state.config?.onboarding?.completedAt ? completionPatch().onboarding : {}),
+                hintsSeen: withTourReset(state.config?.onboarding),
+              }
+            }),
             signal: AbortSignal.timeout(10_000),
           })
             .then((config) => {
@@ -739,22 +741,22 @@ function BuiltInBrowserRow() {
 
   return (
     <SettingRow
-    title={t("settings.experimental.browserAria")}
-    subtitle={desktopBrowser
+      title={t("settings.experimental.browserAria")}
+      subtitle={desktopBrowser
         ? browser
-        ? t("settings.experimental.browserOn")
-        : t("settings.experimental.browserOff")
+          ? t("settings.experimental.browserOn")
+          : t("settings.experimental.browserOff")
         : browserBlockedOnWindows
-        ? t("settings.experimental.browserWindows")
-        : browserUnavailableReason(state.config)}
-    message={error ? <p role="alert" className="text-danger">{error}</p> : null}
+          ? t("settings.experimental.browserWindows")
+          : browserUnavailableReason(state.config)}
+      message={error ? <p role="alert" className="text-danger">{error}</p> : null}
     >
       <Switch
-          checked={browser}
-          aria-label={t("settings.experimental.browserAria")}
-          disabled={saving || (!browser && !desktopBrowser && !browserInstallable)}
-          onClick={() => void toggle(!browser)}
-          className="disabled:cursor-wait disabled:opacity-50"
+        checked={browser}
+        aria-label={t("settings.experimental.browserAria")}
+        disabled={saving || (!browser && !desktopBrowser && !browserInstallable)}
+        onClick={() => void toggle(!browser)}
+        className="disabled:cursor-wait disabled:opacity-50"
       />
     </SettingRow>
   );
@@ -1016,10 +1018,6 @@ export function SettingsModal() {
               <AnthropicEveryClaudeBot />
               <ApiKeyRow section="xai" testProvider="xai" />
               <ApiKeyRow section="openrouter" testProvider="openrouter" />
-              <ApiKeyRow section="mistral" testProvider="mistral" />
-              <ApiKeyRow section="cerebras" testProvider="cerebras" />
-              <ApiKeyRow section="groq" testProvider="groq" />
-              <ApiKeyRow section="meta" testProvider="meta" />
               <details data-api-keys-other className="rounded-lg border border-hairline/40 bg-inset px-3 py-2" open={Boolean(state.config?.openaiCompat?.configured)}>
                 <summary className="cursor-pointer text-[13px] text-ink-secondary">{t("keys.other.title")}</summary>
                 <div className="mt-3 flex flex-col gap-4">

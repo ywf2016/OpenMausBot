@@ -48,17 +48,12 @@ describe("provider key rows", () => {
     expect(render(createElement(ApiKeyRow, { section: "openai", testProvider: "openai" }))).toContain("OpenAI API key");
     expect(render(createElement(ApiKeyRow, { section: "openrouter", testProvider: "openrouter" }))).toContain("sk-or-v1-…");
 
-    expect(render(createElement(ApiKeyRow, { section: "xai", testProvider: "xai" }))).toContain("xAI API key");
-    const groq = render(createElement(ApiKeyRow, { section: "groq", testProvider: "groq" }));
-    expect(groq).toContain("Groq API key");
-    expect(groq).toContain('type="password"');
-    expect(groq).toContain('value=""');
-    expect(groq).not.toContain("Connected");
-    expect(groq).not.toContain(">Test<");
-    const meta = render(createElement(ApiKeyRow, { section: "meta", testProvider: "meta" }));
-    expect(meta).toContain("Meta Model API key");
-    expect(meta).toContain("LLM|…");
-    expect(meta).toContain('type="password"');
+    const xai = render(createElement(ApiKeyRow, { section: "xai", testProvider: "xai" }));
+    expect(xai).toContain("xAI API key");
+    expect(xai).toContain('type="password"');
+    expect(xai).toContain('value=""');
+    expect(xai).not.toContain("Connected");
+    expect(xai).not.toContain(">Test<");
   });
 
   it("saves on paste instead of a Save button, and keeps key effects in view", () => {

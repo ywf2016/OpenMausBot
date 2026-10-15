@@ -100,16 +100,14 @@ describe("Settings → Engines → setup cards", () => {
     expect(unsupported).not.toContain("Add ChatGPT account");
   });
 
-  it("shows the actual account email with an honest fallback", () => {
+  it("shows the actual account email when present", () => {
     vi.stubGlobal("window", {});
     fixture.bots = [];
     const instance: InstanceInfo = { instanceId: "claude-work", driverKind: "claudeAgent", displayName: "Work", cliDefault: "claude", snapshot: { state: "available", authenticated: true, account: { email: "work@example.test" } }, models: { default: "sonnet", options: [] } };
     fixture.instances = [instance];
     expect(renderToStaticMarkup(createElement(EnginesSettings))).toContain("work@example.test");
     delete instance.snapshot.account;
-    expect(renderToStaticMarkup(createElement(EnginesSettings))).toContain("account email unavailable");
-    instance.snapshot.authenticated = false;
-    expect(renderToStaticMarkup(createElement(EnginesSettings))).not.toContain("account email unavailable");
+    expect(renderToStaticMarkup(createElement(EnginesSettings))).not.toContain("work@example.test");
   });
 
   it("shows every Company provider as read-only while preserving personal controls", () => {

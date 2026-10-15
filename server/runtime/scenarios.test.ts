@@ -1238,9 +1238,14 @@ describe("§3 one level rule", () => {
     const capped = ok(enqueueFrom(w, root, workFor("qa", "Test", { levels: { own: "ask", chief: "full" }, driverKind: "unknownAgent" })));
     expect(capped.level).toBe("ask");
     expect(capped.levelSource).toBe("engine_cap");
-    const edits = ok(enqueueFrom(w, root, workFor("ops", "Deploy", { levels: { own: "ask", chief: "auto" }, driverKind: "qwenAgent" })));
-    expect(edits.level).toBe("edits");
-    expect(edits.levelSource).toBe("engine_cap");
+    // Qwen has a native reviewer: inherited Auto stays Auto
+    const qwenAuto = ok(enqueueFrom(w, root, workFor("ops", "Deploy", { levels: { own: "ask", chief: "auto" }, driverKind: "qwenAgent" })));
+    expect(qwenAuto.level).toBe("auto");
+    expect(qwenAuto.levelSource).toBe("chief");
+    // OpenCode has Full but no reviewer or edits mode: Auto collapses to Ask
+    const openCodeCap = ok(enqueueFrom(w, root, workFor("ops", "Ship", { levels: { own: "ask", chief: "auto" }, driverKind: "opencodeGo" })));
+    expect(openCodeCap.level).toBe("ask");
+    expect(openCodeCap.levelSource).toBe("engine_cap");
     const ownWins = ok(enqueueFrom(w, root, workFor("dev", "Lint", { levels: { own: "full", chief: "edits" }, driverKind: "claudeAgent" })));
     expect(ownWins.level).toBe("full");
     expect(ownWins.levelSource).toBe("own");

@@ -14,8 +14,8 @@
 // turned it into `node <script>` on Windows too, so the e2e half now runs
 // everywhere alongside the mention-resolution units.
 import { spawn, type ChildProcess } from "node:child_process";
-import { createHash, randomUUID } from "node:crypto";
-import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
@@ -214,29 +214,6 @@ describe("routine comms e2e on the job runtime (fake ACP fleet)", () => {
     chmodSync(FAKE_CLI, 0o755);
     home = mkdtempSync(join(tmpdir(), "omb-comms-test-"));
     gateFile = join(home, "helper-gate");
-    const antigravityDirectory = join(home, "fake-antigravity");
-    const antigravityCli = join(antigravityDirectory, "agy_acp_server.ts");
-    const antigravityHarness = join(
-      antigravityDirectory,
-      process.platform === "win32" ? "localharness_external.exe" : "localharness_external",
-    );
-    mkdirSync(antigravityDirectory, { recursive: true });
-    copyFileSync(FAKE_CLI, antigravityCli);
-    copyFileSync(FAKE_CLI, antigravityHarness);
-    if (process.platform !== "win32") {
-      chmodSync(antigravityCli, 0o755);
-      chmodSync(antigravityHarness, 0o755);
-    }
-    const antigravityProfile = join(
-      home,
-      ".openmausbot",
-      "providers",
-      "antigravity",
-      createHash("sha256").update("geminiAsker").digest("hex"),
-      "antigravity-acp",
-    );
-    mkdirSync(antigravityProfile, { recursive: true });
-    writeFileSync(join(antigravityProfile, "acp_token.json"), "{}\n");
     compat = createServer(async (req, res) => {
       for await (const _ of req) { /* drain */ }
       if (req.url?.endsWith("/models")) {
@@ -288,17 +265,17 @@ describe("routine comms e2e on the job runtime (fake ACP fleet)", () => {
             environment: { FAKE_ACP_MODE: "mcp-tools" },
             config: { cli: FAKE_CLI, fullAuto: true },
           },
-          // Antigravity uses Google's official ACP server. This instance
-          // proves its session-scoped MCP mount reaches the same agents proxy.
+          // A second kimiAgent asker: proves a session-scoped MCP mount
+          // reaches the same agents proxy for more than one ACP instance.
           geminiAsker: {
             driver: "kimiAgent",
             environment: {
               FAKE_ACP_MODE: "ask-peer",
               FAKE_ACP_AUTH_METHOD: "oauth-personal",
-              FAKE_ACP_MODELS: "gemini-3.8-flash-high",
+              FAKE_ACP_MODELS: "kimi-k2",
               FAKE_ACP_MODES: "default,yolo",
             },
-            config: { cli: antigravityCli, fullAuto: true },
+            config: { cli: FAKE_CLI, fullAuto: true },
           },
           // the asker that hands work on with coordinate_bots (mode work)
           askerDelegate: {

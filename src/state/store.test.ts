@@ -2436,18 +2436,14 @@ describe("live config frames", () => {
     const frame: ConfigStatusFrame = {
       ...baseFrame,
       anthropic: { configured: true },
-      mistral: { configured: true },
-      groq: { configured: true },
-      meta: { configured: true },
+      openrouter: { configured: true },
       openaiCompat: { configured: true, url: "http://127.0.0.1:1/v1" },
       fleet: { available: true },
     };
     const state = reducer(saved, { type: "configStatus", config: configStatusFromFrame(frame) });
     expect(state.config).toMatchObject({
       anthropic: { configured: true },
-      mistral: { configured: true },
-      groq: { configured: true },
-      meta: { configured: true },
+      openrouter: { configured: true },
       openaiCompat: { configured: true, url: "http://127.0.0.1:1/v1" },
       fleet: { available: true },
     });

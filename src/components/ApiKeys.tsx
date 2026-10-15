@@ -9,9 +9,9 @@ import { useMenuMotion } from "./MenuMotion";
 import { t } from "@/lib/i18n";
 import type { LocaleKey } from "@/locales";
 
-export type ConfigSection = "composio" | "box" | "opencodeGo" | "anthropic" | "openai" | "openrouter" | "openaiCompat" | "xai" | "mistral" | "cerebras" | "groq" | "meta";
+export type ConfigSection = "composio" | "box" | "opencodeGo" | "anthropic" | "openai" | "openrouter" | "openaiCompat" | "xai";
 /** Sections whose key can be tried against the provider from the server. */
-export type TestableProvider = "anthropic" | "openai" | "openrouter" | "openaiCompat" | "xai" | "mistral" | "cerebras" | "groq" | "meta";
+export type TestableProvider = "anthropic" | "openai" | "openrouter" | "openaiCompat" | "xai";
 
 const SECTIONS: Record<
   ConfigSection,
@@ -43,10 +43,6 @@ const SECTIONS: Record<
   openai: { body: (v) => ({ openai: { key: v } }), flag: (c) => c.openai?.configured ?? false },
   openrouter: { body: (v) => ({ openrouter: { key: v } }), flag: (c) => c.openrouter?.configured ?? false },
   openaiCompat: { body: (v) => ({ openaiCompat: { key: v } }), flag: (c) => c.openaiCompat?.configured ?? false },
-  mistral: { body: (v) => ({ mistral: { key: v } }), flag: (c) => c.mistral?.configured ?? false },
-  cerebras: { body: (v) => ({ cerebras: { key: v } }), flag: (c) => c.cerebras?.configured ?? false },
-  groq: { body: (v) => ({ groq: { key: v } }), flag: (c) => c.groq?.configured ?? false },
-  meta: { body: (v) => ({ meta: { key: v } }), flag: (c) => c.meta?.configured ?? false },
   xai: { body: (v) => ({ xai: { key: v } }), flag: (c) => c.xai?.configured ?? false },
 };
 
@@ -132,38 +128,6 @@ const CREDENTIALS: Record<
     descriptionKey: "keys.openaiCompat.desc",
     href: "https://platform.openai.com/docs/api-reference",
     linkLabelKey: "keys.openaiCompat.link",
-    optional: true,
-  },
-  mistral: {
-    labelKey: "keys.mistral.label",
-    placeholderKey: "keys.mistral.placeholder",
-    descriptionKey: "keys.mistral.desc",
-    href: "https://console.mistral.ai/api-keys",
-    linkLabelKey: "keys.mistral.link",
-    optional: true,
-  },
-  cerebras: {
-    labelKey: "keys.cerebras.label",
-    placeholder: "csk-…",
-    descriptionKey: "keys.cerebras.desc",
-    href: "https://cloud.cerebras.ai/",
-    linkLabelKey: "keys.cerebras.link",
-    optional: true,
-  },
-  groq: {
-    labelKey: "keys.groq.label",
-    placeholder: "gsk_…",
-    descriptionKey: "keys.groq.desc",
-    href: "https://console.groq.com/docs/overview",
-    linkLabelKey: "keys.groq.link",
-    optional: true,
-  },
-  meta: {
-    labelKey: "keys.meta.label",
-    placeholder: "LLM|…",
-    descriptionKey: "keys.meta.desc",
-    href: "https://dev.meta.ai/docs/authentication",
-    linkLabelKey: "keys.meta.link",
     optional: true,
   },
   xai: {
@@ -329,9 +293,9 @@ export function ApiKeyRow({
     const request = window.ogb?.setCredential && electronSlot
       ? window.ogb.setCredential(electronSlot, next)
       : api("/api/config", {
-          method: "PUT",
-          body: JSON.stringify(SECTIONS[section].body(next, !configured)),
-        });
+        method: "PUT",
+        body: JSON.stringify(SECTIONS[section].body(next, !configured)),
+      });
     request
       .then((status: ConfigStatus) => {
         dispatch({ type: "configStatus", config: status });

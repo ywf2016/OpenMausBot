@@ -417,7 +417,7 @@ describe("resolveRequestAuth", () => {
     ["POST", "/api/fleet/workspaces"],
     ["DELETE", "/api/fleet/workspaces/acme"],
     ["POST", "/api/fleet/upgrade"],
-    ["POST", "/api/instances/antigravity/auth/complete"],
+    ["POST", "/api/instances/kimi/auth/complete"],
   ])("requires admin for server Settings: %s %s", (method, path) => {
     expect(requiredScope(method, path.split("?")[0]!)).toBe("admin");
     const client = pairedToken(["client"]);

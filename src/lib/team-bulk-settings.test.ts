@@ -122,7 +122,7 @@ describe("team-wide settings", () => {
     const high = planTeamChange(bots, instances, { kind: "model", effort: "high" });
     expect(high.map((row) => row.status)).toEqual(["apply", "apply", "skip", "skip"]);
     expect(high[1]).toMatchObject({ patch: { modelSelection: { instanceId: "codex", model: "gpt-5", effort: "high" } } });
-    expect(high[2]).toMatchObject({ reason: "Pi uses reasoning variants instead of effort levels" });
+    expect(high[2]).toMatchObject({ reason: "Local uses reasoning variants instead of effort levels" });
     expect(planTeamChange([bots[0]!], instances, { kind: "model", effort: "xhigh" })[0]).toMatchObject({ status: "skip", reason: "Claude does not offer this effort level" });
 
     // Clearing the effort, and a variant only following its own model.

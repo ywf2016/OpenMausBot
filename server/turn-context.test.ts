@@ -76,14 +76,14 @@ describe("engineIsFresh", () => {
   });
 
   it("is true when the same instance ran last but there is no cursor to resume", () => {
-    expect(engineIsFresh({ instanceId: "pi", lastInstanceId: "pi", resumeCursors: {}, transcript: withUser })).toBe(true);
+    expect(engineIsFresh({ instanceId: "kimi", lastInstanceId: "kimi", resumeCursors: {}, transcript: withUser })).toBe(true);
   });
 
   it("is true when another instance ran the last turn — even if this one has an older cursor", () => {
-    // the user's bug: claude had a session from days ago, antigravity took the
+    // the user's bug: claude had a session from days ago, kimi took the
     // latest turn, switching back to claude must NOT resume the stale session
     expect(
-      engineIsFresh({ instanceId: "claude", lastInstanceId: "antigravity", resumeCursors: { claude: "old", antigravity: "s2" }, transcript: withUser }),
+      engineIsFresh({ instanceId: "claude", lastInstanceId: "kimi", resumeCursors: { claude: "old", kimi: "s2" }, transcript: withUser }),
     ).toBe(true);
   });
 
@@ -103,7 +103,7 @@ describe("engineIsFresh", () => {
     expect(engineIsFresh({ instanceId: "codex", lastInstanceId: undefined, resumeCursors: { claude: "s1" }, transcript: withUser })).toBe(true);
     // two cursors — can't tell who ran last; replaying is the safe side
     expect(
-      engineIsFresh({ instanceId: "claude", lastInstanceId: undefined, resumeCursors: { claude: "s1", antigravity: "s2" }, transcript: withUser }),
+      engineIsFresh({ instanceId: "claude", lastInstanceId: undefined, resumeCursors: { claude: "s1", kimi: "s2" }, transcript: withUser }),
     ).toBe(true);
   });
 });

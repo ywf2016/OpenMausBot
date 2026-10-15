@@ -76,19 +76,19 @@ it("cancels the same flow and never opens an untrusted authorization URL", async
   expect(fixture.refreshModels).not.toHaveBeenCalled();
 });
 
-it.each([undefined, "google-original"])("adds a named account independently without signing it in or replacing an existing identity (%s)", async (antigravityInstanceId) => {
+it("adds a named account independently without signing it in or replacing an existing identity", async () => {
   const accounts = [{ instanceId: "chatgpt-second", displayName: "Work" }];
   fixture.api.mockResolvedValueOnce({ instanceId: "chatgpt-second", instances: accounts });
   fixture.index = 0;
-  nodes(AddProviderAccount({ antigravityInstanceId })).find((node) => node.type === "button")!.props.onClick!();
+  nodes(AddProviderAccount()).find((node) => node.type === "button")!.props.onClick!();
   fixture.index = 0;
-  const input = nodes(AddProviderAccount({ antigravityInstanceId })).find((node) => node.type === "input") as ReactElement<{ onChange: (event: { target: { value: string } }) => void }>;
+  const input = nodes(AddProviderAccount()).find((node) => node.type === "input") as ReactElement<{ onChange: (event: { target: { value: string } }) => void }>;
   input.props.onChange({ target: { value: " Work " } });
   fixture.index = 0;
-  const form = nodes(AddProviderAccount({ antigravityInstanceId })).find((node) => node.type === "form") as ReactElement<{ onSubmit: (event: { preventDefault: () => void }) => void }>;
+  const form = nodes(AddProviderAccount()).find((node) => node.type === "form") as ReactElement<{ onSubmit: (event: { preventDefault: () => void }) => void }>;
   form.props.onSubmit({ preventDefault: () => {} });
   await flush();
-  expect(fixture.api).toHaveBeenCalledWith(`/api/instances/${antigravityInstanceId ? "antigravity" : "chatgpt"}-accounts`, { method: "POST", body: JSON.stringify({ displayName: "Work", ...(antigravityInstanceId ? { sourceInstanceId: antigravityInstanceId } : {}) }) });
+  expect(fixture.api).toHaveBeenCalledWith("/api/instances/chatgpt-accounts", { method: "POST", body: JSON.stringify({ displayName: "Work" }) });
   expect(fixture.api).toHaveBeenCalledOnce();
   expect(fixture.dispatch).toHaveBeenCalledWith({ type: "instances", instances: accounts });
   expect(fixture.openExternal).not.toHaveBeenCalled();

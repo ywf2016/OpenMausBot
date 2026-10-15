@@ -7,14 +7,14 @@ describe("splitEngineRail", () => {
   it("groups sign-in plans, pasted provider keys and Local engines", () => {
     const { subscription, api, custom } = splitEngineRail([
       { access: "subscription", instanceId: "claude" },
-      { access: "custom", instanceId: "hermes" },
-      { instanceId: "grok" },
-      { access: "api", instanceId: "mistral" },
+      { access: "custom", instanceId: "local" },
+      { instanceId: "kimi" },
+      { access: "api", instanceId: "openaiCompat" },
       { access: "custom", instanceId: "qwen" },
     ]);
-    expect(subscription.map((row) => row.instanceId)).toEqual(["claude", "grok"]);
-    expect(api.map((row) => row.instanceId)).toEqual(["mistral"]);
-    expect(custom.map((row) => row.instanceId)).toEqual(["hermes", "qwen"]);
+    expect(subscription.map((row) => row.instanceId)).toEqual(["claude", "kimi"]);
+    expect(api.map((row) => row.instanceId)).toEqual(["openaiCompat"]);
+    expect(custom.map((row) => row.instanceId)).toEqual(["local", "qwen"]);
   });
 
   it("hides the second group when nothing is custom-only", () => {

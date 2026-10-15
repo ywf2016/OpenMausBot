@@ -114,7 +114,7 @@ describe("Grok Build device sign-in UI", () => {
 
   it("shows the code and xAI's own page, in Grok's words, not ChatGPT's", () => {
     // Device codes for engines now map to Codex; Grok copy remains for explicit provider="grok" UI.
-    expect(deviceSignInProvider("grokAgent")).toBe("codex");
+    expect(deviceSignInProvider("kimiAgent")).toBe("codex");
     expect(deviceSignInProvider("codex")).toBe("codex");
     const html = renderGrok(grok);
     expect(html).toContain("WDJB-MJHT");

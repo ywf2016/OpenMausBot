@@ -207,7 +207,7 @@ export interface Message {
    * narration of the same chip ("reading a file"), used by call mode. */
   /** `setup` marks an error fixed by installing something, not by retrying.
    * `summary` is the call's input on one redacted line (the shell command). */
-  tool?: { name: string; ok?: boolean; spoken?: string; setup?: boolean; claudeUpdate?: boolean; place?: PlaceRow; summary?: string; input?: string; output?: string ; itemId?: string; outputPath?: string; fullResult?: boolean };
+  tool?: { name: string; ok?: boolean; spoken?: string; setup?: boolean; claudeUpdate?: boolean; place?: PlaceRow; summary?: string; input?: string; output?: string; itemId?: string; outputPath?: string; fullResult?: boolean };
   /** user messages sent into a running turn — the model saw it mid-turn */
   steered?: boolean;
   /** a user message that did not come from typing here: through the
@@ -623,14 +623,16 @@ export type TaskUpdatePatch = Partial<Pick<Task, "modelSelection" | "approvalMod
 
 function taskPatchFields(patch: TaskUpdatePatch): Partial<Task> {
   const { acknowledgeLocalAuto: _localAck, updateBotDefault: _modelDefault, resetApprovalToAsk, projectId, archivedAt, snoozedUntil, surface, pinned, link, ...fields } = patch;
-  return { ...fields, ...(resetApprovalToAsk ? { approvalMode: "ask", autoApprove: false, alwaysAllow: [] } : {}),
+  return {
+    ...fields, ...(resetApprovalToAsk ? { approvalMode: "ask", autoApprove: false, alwaysAllow: [] } : {}),
     ...(projectId === undefined ? {} : { projectId: projectId ?? undefined }),
     ...(archivedAt === undefined ? {} : { archivedAt: archivedAt ?? undefined }),
     ...(snoozedUntil === undefined ? {} : { snoozedUntil: snoozedUntil ?? undefined }),
     // A person's pin or unpin is never the machine's record.
     ...(surface === undefined ? {} : { surface: surface ?? undefined, surfaceAuto: undefined }),
     ...(pinned === undefined ? {} : { pinned: pinned ? true : undefined }),
-    ...(link === undefined ? {} : { link: link ?? undefined }) };
+    ...(link === undefined ? {} : { link: link ?? undefined })
+  };
 }
 
 /** A snapshot must not move a thread backwards in the list. Local bumps can
@@ -705,10 +707,6 @@ export function visibleMessages(bot: Pick<Bot, "messages" | "activeLeafId">): Me
 /** GET /api/config — configured flags only; secrets are never echoed. */
 export interface ConfigStatus {
   xai?: { configured: boolean };
-  mistral?: { configured: boolean };
-  cerebras?: { configured: boolean };
-  groq?: { configured: boolean };
-  meta?: { configured: boolean };
   /** `everyClaudeBot`: the key runs every Claude bot, not only "Claude (API key)". */
   anthropic?: { configured: boolean; everyClaudeBot?: boolean };
   openai?: { configured: boolean };
@@ -845,16 +843,12 @@ export interface BrowserProfile {
 // Settings shows (a saved key's Test button used to vanish that way).
 export type ConfigStatusFrame = Pick<
   ConfigStatus,
-  "xai" | "mistral" | "cerebras" | "groq" | "meta" | "anthropic" | "openai" | "openrouter" | "openaiCompat" | "fleet" | "composio" | "box" | "vps" | "rooms" | "mcp" | "threads" | "automaticRecovery" | "cacheKeepWarm" | "localVm" | "opencodeGo" | "tts" | "decider" | "imageGen" | "live" | "profile" | "language" | "features" | "onboarding" | "browserEngine" | "browserProfiles" | "edition" | "budgets" | "billing" | "managedPolicy" | "cloudHome"
+  "xai" | "anthropic" | "openai" | "openrouter" | "openaiCompat" | "fleet" | "composio" | "box" | "vps" | "rooms" | "mcp" | "threads" | "automaticRecovery" | "cacheKeepWarm" | "localVm" | "opencodeGo" | "tts" | "decider" | "imageGen" | "live" | "profile" | "language" | "features" | "onboarding" | "browserEngine" | "browserProfiles" | "edition" | "budgets" | "billing" | "managedPolicy" | "cloudHome"
 >;
 
 export function configStatusFromFrame(frame: ConfigStatusFrame): ConfigStatus {
   return {
     xai: frame.xai,
-    mistral: frame.mistral,
-    cerebras: frame.cerebras,
-    groq: frame.groq,
-    meta: frame.meta,
     anthropic: frame.anthropic,
     openai: frame.openai,
     openrouter: frame.openrouter,
@@ -1242,15 +1236,15 @@ export type BotAnnouncement = Omit<Bot, "messages"> & { messages?: Message[] };
 
 export type Action =
   | {
-      type: "hydrate";
-      bots: Bot[];
-      groups: Group[];
-      sections?: string[];
-      computerControl: Record<string, ComputerControlState>;
-      botQueuedMessages?: AppState["pendingQueued"];
-      /** the conversation open on this device last launch, for the first hydrate */
-      resumeId?: string;
-    }
+    type: "hydrate";
+    bots: Bot[];
+    groups: Group[];
+    sections?: string[];
+    computerControl: Record<string, ComputerControlState>;
+    botQueuedMessages?: AppState["pendingQueued"];
+    /** the conversation open on this device last launch, for the first hydrate */
+    resumeId?: string;
+  }
   | { type: "botQueues"; queues: AppState["pendingQueued"] }
   | { type: "sections"; sections: string[] }
   | { type: "sectionDeleted"; section: string; sections: string[] }
@@ -1277,20 +1271,20 @@ export type Action =
   | { type: "groupDeleted"; groupId: string }
   | { type: "createGroup"; memberIds: string[]; name?: string; section?: string }
   | {
-      type: "sendGroup";
-      groupId: string;
-      text: string;
-      sendId?: string;
-      replyToId?: string;
-      threadId?: string;
-      mode?: "chat" | "goal";
-      onError?: () => void;
-    }
+    type: "sendGroup";
+    groupId: string;
+    text: string;
+    sendId?: string;
+    replyToId?: string;
+    threadId?: string;
+    mode?: "chat" | "goal";
+    onError?: () => void;
+  }
   | {
-      type: "patchGroup";
-      groupId: string;
-      patch: Partial<Pick<Group, "name" | "bulletin" | "memberIds" | "defaultResponder" | "pinnedMessageId" | "section">>;
-    }
+    type: "patchGroup";
+    groupId: string;
+    patch: Partial<Pick<Group, "name" | "bulletin" | "memberIds" | "defaultResponder" | "pinnedMessageId" | "section">>;
+  }
   | { type: "deleteGroup"; groupId: string }
   | { type: "newGroupTask"; groupId: string }
   | { type: "switchGroupTask"; groupId: string; threadId: string }
@@ -1311,16 +1305,16 @@ export type Action =
   | { type: "profileSaved"; profile: Partial<NonNullable<ConfigStatus["profile"]>> }
   | { type: "select"; id: string }
   | {
-      type: "send";
-      botId: string;
-      text: string;
-      sendId?: string;
-      replyToId?: string;
-      threadId?: string;
-      /** The Data result the person is viewing, for the model only; never part of the text. */
-      dataContext?: import("../../shared/data-context").DataContext;
-      onError?: () => void;
-    }
+    type: "send";
+    botId: string;
+    text: string;
+    sendId?: string;
+    replyToId?: string;
+    threadId?: string;
+    /** The Data result the person is viewing, for the model only; never part of the text. */
+    dataContext?: import("../../shared/data-context").DataContext;
+    onError?: () => void;
+  }
   | { type: "pendingQueued"; threadId: string; queueId: string; text: string; reason?: SteerQueueReason }
   | { type: "consumePendingQueued"; threadId: string; queueId: string }
   | { type: "cancelQueued"; botId: string; queueId: string; threadId?: string; onCancelled?: () => void }
@@ -1341,22 +1335,22 @@ export type Action =
   // permission cards answer by THREAD, so a request raised inside a room
   // can be answered the same way as one in a 1:1 chat
   | {
-      type: "decideRequest";
-      threadId: string;
-      requestId: string;
-      behavior: "allow" | "deny" | "answer";
-      message?: string;
-      /** Exact proposal hash displayed by a current learned-skill client. */
-      reviewedSha256?: string;
-      /** remember this exact grant (the server's allowKey) for the bot */
-      alwaysAllow?: { botId: string; key: string };
-      /** "Always allow this session": the provider keeps the allow */
-      always?: boolean;
-      /** Remember the server-validated exact command and answer atomically. */
-      rememberCommand?: boolean;
-      /** Local UI recovery hook for voice flows. Never sent to the server. */
-      onError?: (message: string) => void;
-    }
+    type: "decideRequest";
+    threadId: string;
+    requestId: string;
+    behavior: "allow" | "deny" | "answer";
+    message?: string;
+    /** Exact proposal hash displayed by a current learned-skill client. */
+    reviewedSha256?: string;
+    /** remember this exact grant (the server's allowKey) for the bot */
+    alwaysAllow?: { botId: string; key: string };
+    /** "Always allow this session": the provider keeps the allow */
+    always?: boolean;
+    /** Remember the server-validated exact command and answer atomically. */
+    rememberCommand?: boolean;
+    /** Local UI recovery hook for voice flows. Never sent to the server. */
+    onError?: (message: string) => void;
+  }
   | { type: "newTask"; botId: string; projectId?: string; cwd?: string; onCreated?: () => void; onError?: (message: string) => void }
   /** `whole`: the whole thread, not its newest page (a search hit can be older). */
   | { type: "switchTask"; botId: string; threadId: string; whole?: true }
@@ -1422,10 +1416,10 @@ export type Action =
   | { type: "toggleWelcome"; open?: boolean }
   | { type: "toggleTour"; open?: boolean }
   | {
-      type: "updateBot";
-      botId: string;
-      patch: BotUpdatePatch;
-    };
+    type: "updateBot";
+    botId: string;
+    patch: BotUpdatePatch;
+  };
 
 /** Discard discoveries when their model/account is replaced or their thread disappears. */
 function reconcileModelVariantSessions(state: AppState): AppState {
@@ -1441,7 +1435,7 @@ function reconcileModelVariantSessions(state: AppState): AppState {
 
 export function pinBotThreadAction(action: Action, bots: Bot[]): Action {
   if (!("botId" in action) || ("threadId" in action && action.threadId) ||
-      !["send", "interrupt", "editMessage", "switchBranch", "answerCard", "dismissCard", "cancelQueued", "steerQueued"].includes(action.type)) return action;
+    !["send", "interrupt", "editMessage", "switchBranch", "answerCard", "dismissCard", "cancelQueued", "steerQueued"].includes(action.type)) return action;
   const botId = action.botId;
   const threadId = bots.find((bot) => bot.id === botId)?.threadId;
   return { ...action, threadId } as Action;
@@ -1851,18 +1845,18 @@ export function reducer(state: AppState, action: Action): AppState {
       const exists = fenced.groups.some((g) => g.id === action.group.id);
       const groups = exists
         ? fenced.groups.map((g) => (g.id === action.group.id ? {
-            ...g, ...action.group,
-            section: typeof action.group.threadId === "string" || Object.hasOwn(action.group, "section") ? action.group.section : g.section,
-            tasks: action.group.tasks ? mergeTaskStamps(g.tasks, action.group.tasks) : g.tasks,
-            turnTimeoutMinutes: Object.hasOwn(action.group, "turnTimeoutMinutes")
-              ? (action.group.turnTimeoutMinutes ?? undefined)
-              : g.turnTimeoutMinutes,
-            messages: action.group.messages ?? g.messages,
-            // A payload that carries a transcript answers the scrollback
-            // question with it: a bounded page says so, and a frame sent
-            // without that marker is the whole thread.
-            hasMore: action.group.messages ? Boolean(action.group.hasMore) : g.hasMore,
-          } : g))
+          ...g, ...action.group,
+          section: typeof action.group.threadId === "string" || Object.hasOwn(action.group, "section") ? action.group.section : g.section,
+          tasks: action.group.tasks ? mergeTaskStamps(g.tasks, action.group.tasks) : g.tasks,
+          turnTimeoutMinutes: Object.hasOwn(action.group, "turnTimeoutMinutes")
+            ? (action.group.turnTimeoutMinutes ?? undefined)
+            : g.turnTimeoutMinutes,
+          messages: action.group.messages ?? g.messages,
+          // A payload that carries a transcript answers the scrollback
+          // question with it: a bounded page says so, and a frame sent
+          // without that marker is the whole thread.
+          hasMore: action.group.messages ? Boolean(action.group.hasMore) : g.hasMore,
+        } : g))
         : [{ ...(action.group as Group), messages: action.group.messages ?? [] }, ...fenced.groups];
       return { ...fenced, groups };
     }
@@ -1988,13 +1982,13 @@ export function reducer(state: AppState, action: Action): AppState {
         ? reducer(motioned, { type: "computerStart", botId: action.bot.id, start: null }) : motioned;
       const next = action.bot.chiefOfStaff
         ? {
-            ...animated,
-            bots: animated.bots.map((b) =>
-              b.id === action.bot.id || (b.section?.trim() || "") !== (action.bot.section?.trim() || "")
-                ? b
-                : { ...b, chiefOfStaff: false },
-            ),
-          }
+          ...animated,
+          bots: animated.bots.map((b) =>
+            b.id === action.bot.id || (b.section?.trim() || "") !== (action.bot.section?.trim() || "")
+              ? b
+              : { ...b, chiefOfStaff: false },
+          ),
+        }
         : animated;
       const switchedThread =
         typeof action.bot.threadId === "string" && action.bot.threadId !== before.threadId &&
@@ -2008,7 +2002,7 @@ export function reducer(state: AppState, action: Action): AppState {
         switching = { ...next, backgroundThreadEvents: otherThreadEvents };
       }
       if ((switchedThread || (before.awaitingThreadSnapshot && action.bot.threadId === before.threadId)) &&
-          Array.isArray(action.bot.messages)) {
+        Array.isArray(action.bot.messages)) {
         // The slim deletion broadcast can arrive before the full snapshot.
         // Finish that switch once, replaying any events received in between.
         // Later duplicate HTTP snapshots must not overwrite newer messages.
@@ -2056,21 +2050,21 @@ export function reducer(state: AppState, action: Action): AppState {
         if (group.threadId !== action.threadId) return stamped;
         const optimisticIndex = action.message.sendId
           ? group.messages.findIndex(
-              (message) => message.id === optimisticMessageId(action.message.sendId!),
-            )
+            (message) => message.id === optimisticMessageId(action.message.sendId!),
+          )
           : -1;
         return {
           ...stamped,
           groups: stamped.groups.map((g) =>
             g.id === group.id
               ? {
-                  ...g,
-                  messages: optimisticIndex >= 0
-                    ? g.messages.map((message, index) =>
-                        index === optimisticIndex ? action.message : message
-                      )
-                    : [...g.messages, action.message],
-                }
+                ...g,
+                messages: optimisticIndex >= 0
+                  ? g.messages.map((message, index) =>
+                    index === optimisticIndex ? action.message : message
+                  )
+                  : [...g.messages, action.message],
+              }
               : g,
           ),
         };
@@ -2110,16 +2104,16 @@ export function reducer(state: AppState, action: Action): AppState {
         action.message.role === "user" && action.message.kind === "text" && Boolean(action.message.queueId)
           ? "working"
           : action.message.kind === "options"
-          ? "thinking"
-          : action.message.kind === "activity"
-            ? action.message.tool?.ok === false
-              ? "failure"
-              : action.message.tool?.ok === true
-                ? "success"
-                : "working"
-            : action.message.role === "bot" && action.message.kind === "text"
-              ? "blink"
-              : null;
+            ? "thinking"
+            : action.message.kind === "activity"
+              ? action.message.tool?.ok === false
+                ? "failure"
+                : action.message.tool?.ok === true
+                  ? "success"
+                  : "working"
+              : action.message.role === "bot" && action.message.kind === "text"
+                ? "blink"
+                : null;
       const animated = motion ? withMascotMotion(next, bot.id, motion) : next;
       return animated;
     }
@@ -2202,13 +2196,17 @@ export function reducer(state: AppState, action: Action): AppState {
       if (!owner) return state;
       const selection = currentTaskBot(owner, event.threadId).modelSelection;
       if (selection.instanceId !== event.providerInstanceId ||
-          !state.instances.find((instance) => instance.instanceId === selection.instanceId)?.capabilities?.modelVariants) return state;
+        !state.instances.find((instance) => instance.instanceId === selection.instanceId)?.capabilities?.modelVariants) return state;
       const previous = state.modelVariantSessions[event.threadId];
       if (event.type === "turn.started") {
         if (previous && (previous.turnId === event.turnId || Date.parse(previous.startedAt) > Date.parse(event.createdAt))) return state;
-        return { ...state, modelVariantSessions: { ...state.modelVariantSessions, [event.threadId]: {
-          instanceId: selection.instanceId, model: selection.model, turnId: event.turnId, startedAt: event.createdAt, acceptingUpdates: true,
-        } } };
+        return {
+          ...state, modelVariantSessions: {
+            ...state.modelVariantSessions, [event.threadId]: {
+              instanceId: selection.instanceId, model: selection.model, turnId: event.turnId, startedAt: event.createdAt, acceptingUpdates: true,
+            }
+          }
+        };
       }
       if (!previous?.acceptingUpdates || previous.turnId !== event.turnId || previous.instanceId !== selection.instanceId || previous.model !== selection.model) return state;
       if (event.type === "session.model-variants" && event.model === selection.model) {
@@ -2221,11 +2219,15 @@ export function reducer(state: AppState, action: Action): AppState {
     }
     case "setModel":
       if (action.threadId) {
-        const picked = reducer(state, { type: "updateTask", botId: action.botId, threadId: action.threadId,
-          patch: { modelSelection: action.selection, resetApprovalToAsk: action.resetApprovalToAsk } });
+        const picked = reducer(state, {
+          type: "updateTask", botId: action.botId, threadId: action.threadId,
+          patch: { modelSelection: action.selection, resetApprovalToAsk: action.resetApprovalToAsk }
+        });
         // Picking the bot's model, or making the pick the bot's, is following it.
-        return updateBot(picked, action.botId, (bot) => ({ ...bot, tasks: bot.tasks?.map((task) => task.threadId !== action.threadId ? task
-          : { ...task, followsBotModel: Boolean(action.updateBotDefault) || sameModelSelection(action.selection, bot.modelSelection) }) }));
+        return updateBot(picked, action.botId, (bot) => ({
+          ...bot, tasks: bot.tasks?.map((task) => task.threadId !== action.threadId ? task
+            : { ...task, followsBotModel: Boolean(action.updateBotDefault) || sameModelSelection(action.selection, bot.modelSelection) })
+        }));
       }
       return reconcileModelVariantSessions(updateBot(state, action.botId, (b) => ({ ...b, modelSelection: action.selection })));
     case "updateTask": {
@@ -2430,13 +2432,13 @@ export function reducer(state: AppState, action: Action): AppState {
       const chiefSection = (action.patch.section ?? target?.section)?.trim() || "";
       const next = action.patch.chiefOfStaff
         ? {
-            ...animated,
-            bots: animated.bots.map((b) =>
-              b.id === action.botId || (b.section?.trim() || "") !== chiefSection
-                ? b
-                : { ...b, chiefOfStaff: false },
-            ),
-          }
+          ...animated,
+          bots: animated.bots.map((b) =>
+            b.id === action.botId || (b.section?.trim() || "") !== chiefSection
+              ? b
+              : { ...b, chiefOfStaff: false },
+          ),
+        }
         : animated;
       const {
         acknowledgeLocalAuto: _localAck,
@@ -2472,7 +2474,7 @@ export function reducer(state: AppState, action: Action): AppState {
       const bot = state.bots.find((b) => b.id === action.botId);
       if (!bot) return state;
       let cur = action.messageId;
-      for (;;) {
+      for (; ;) {
         const children = bot.messages.filter((m) => m.parentId === cur);
         if (!children.length) break;
         cur = children.reduce((a, b) => (b.at >= a.at ? b : a)).id;
@@ -2621,11 +2623,11 @@ export function reducer(state: AppState, action: Action): AppState {
         groups: state.groups.map((group) =>
           group.id === action.groupId
             ? {
-                ...group,
-                tasks: (group.tasks ?? []).map((task) =>
-                  task.threadId === action.threadId ? { ...task, title: action.title } : task,
-                ),
-              }
+              ...group,
+              tasks: (group.tasks ?? []).map((task) =>
+                task.threadId === action.threadId ? { ...task, title: action.title } : task,
+              ),
+            }
             : group,
         ),
       };
@@ -2635,11 +2637,11 @@ export function reducer(state: AppState, action: Action): AppState {
         groups: state.groups.map((group) =>
           group.id === action.groupId
             ? {
-                ...group,
-                tasks: (group.tasks ?? []).map((task) =>
-                  task.threadId === action.threadId ? { ...task, pinned: action.pinned ? true : undefined } : task,
-                ),
-              }
+              ...group,
+              tasks: (group.tasks ?? []).map((task) =>
+                task.threadId === action.threadId ? { ...task, pinned: action.pinned ? true : undefined } : task,
+              ),
+            }
             : group,
         ),
       };
@@ -2683,9 +2685,11 @@ export function reducer(state: AppState, action: Action): AppState {
         // …and on screen it is read, as `select` reads the thread it opens. The
         // snapshot predates the switch's own announcement, which told the
         // server so (the "bot" frame), and must not put the dot back.
-        if (switched.activeView === "chat") switched = updateBot(switched, opened.id, (bot) => ({ ...bot,
+        if (switched.activeView === "chat") switched = updateBot(switched, opened.id, (bot) => ({
+          ...bot,
           unread: Boolean(bot.tasks?.some((task) => task.threadId !== bot.threadId && task.unread)),
-          tasks: bot.tasks?.map((task) => task.threadId === bot.threadId ? { ...task, unread: false } : task) }));
+          tasks: bot.tasks?.map((task) => task.threadId === bot.threadId ? { ...task, unread: false } : task)
+        }));
       }
       return reconcileModelVariantSessions(reconcileSnapshotQueues(switched, [action.bot]));
     }
@@ -2867,8 +2871,10 @@ export class ApiError extends Error {
  * announced to people who should not see it. */
 export async function createBotWithRole(role?: BotRole, request: typeof api = api, visibility?: BotVisibility, section?: string): Promise<{ bot: Bot; profileError?: string }> {
   const restricted = visibility && visibility !== "everyone" ? { visibility } : {};
-  const fields = { ...(role ? { name: role.name, title: role.title, description: role.description } : {}), ...restricted,
-    ...(section !== undefined ? { section } : {}) };
+  const fields = {
+    ...(role ? { name: role.name, title: role.title, description: role.description } : {}), ...restricted,
+    ...(section !== undefined ? { section } : {})
+  };
   const { bot } = await request("/api/bots", {
     method: "POST",
     ...(Object.keys(fields).length ? { body: JSON.stringify(fields) } : {}),
@@ -3017,8 +3023,7 @@ export async function persistBotUpdate(
         await trustedApprovals.setMode(botId, "ask", { acknowledgeLocalAuto: false, ...(applyToAllThreads ? { allThreads: true } : {}) });
       } catch (error) {
         throw new Error(
-          `The cancelled ${approvalMode === "full" ? "Full access" : "Custom approval"} grant could not be revoked: ${
-            error instanceof Error ? error.message : String(error)
+          `The cancelled ${approvalMode === "full" ? "Full access" : "Custom approval"} grant could not be revoked: ${error instanceof Error ? error.message : String(error)
           }`,
         );
       }
@@ -3211,7 +3216,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(patch),
-      }).catch(() => {});
+      }).catch(() => { });
     };
 
     const waitForExecutionSettings = async (expectedBots: Bot[], threadId?: string) => {
@@ -3244,7 +3249,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // Keep their order, and don't let a group send race either pending save.
       const defaults = patch.updateBotDefault || patch.approvalMode !== undefined
         ? [...taskWrites.values()].filter((write) => write.botId === botId) : [];
-      const promise = Promise.all([previous?.promise, ...defaults.map((write) => write.promise)].map((save) => save?.catch(() => {})))
+      const promise = Promise.all([previous?.promise, ...defaults.map((write) => write.promise)].map((save) => save?.catch(() => { })))
         .then(async () => {
           // The private path is required for Custom; use it for every
           // confirmed desktop switch so optimistic Ask cannot hide the
@@ -3260,7 +3265,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // awaiting this batch must observe every rejected setting in it. A
       // successful folder move is not confirmation of a failed model change.
       const execution = Promise.all([previous?.execution, promise]);
-      void execution.catch(() => {}); // handled by the write and send paths
+      void execution.catch(() => { }); // handled by the write and send paths
       const pending = { botId, updatesDefault: Boolean(patch.updateBotDefault || previous?.updatesDefault), patch: { ...previous?.patch, ...patch }, promise, execution };
       taskWrites.set(threadId, pending);
       void pending.promise.then((bot) => {
@@ -3281,7 +3286,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               rawDispatch({ type: "botPatched", bot: withTaskWrites(bot) });
               taskWrites.delete(threadId);
             }
-          }).catch(() => {});
+          }).catch(() => { });
         }
       });
     };
@@ -3531,9 +3536,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           const sendId = action.sendId ?? crypto.randomUUID();
           void waitForExecutionSettings(botBeforeSend ? [botBeforeSend] : [], threadId)
             .then(() => api(`/api/bots/${action.botId}/messages`, {
-                method: "POST",
-                body: JSON.stringify({ text: action.text, replyToId: action.replyToId, threadId, sendId, ...(action.dataContext ? { dataContext: action.dataContext } : {}) }),
-              }))
+              method: "POST",
+              body: JSON.stringify({ text: action.text, replyToId: action.replyToId, threadId, sendId, ...(action.dataContext ? { dataContext: action.dataContext } : {}) }),
+            }))
             .then((body) => {
               if (body?.message && typeof body.threadId === "string") {
                 rawDispatch({ type: "messageAdded", threadId: body.threadId, message: body.message });
@@ -3680,7 +3685,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             api(`/api/threads/${action.threadId ?? host.threadId}/respond`, {
               method: "POST",
               body: JSON.stringify({ requestId: card.requestId, ...dismissResponse(card) }),
-            }).catch(() => {});
+            }).catch(() => { });
           } else if (!inRoom) {
             persistCard(action.botId, action.messageId, { dismissed: true });
           }
@@ -3771,7 +3776,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           break;
         case "markUnread":
           api(`/api/bots/${action.botId}`, { method: "PATCH", body: JSON.stringify({ unread: true }) }).catch(
-            () => {},
+            () => { },
           );
           break;
         case "openDataResult":
@@ -3780,9 +3785,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           const bot = stateRef.current.bots.find((b) => b.id === id);
           const group = stateRef.current.groups.find((g) => g.id === id);
           if (bot?.unread) {
-            api(`/api/bots/${id}/read`, { method: "POST", body: JSON.stringify({ threadId: bot.threadId }) }).catch(() => {});
+            api(`/api/bots/${id}/read`, { method: "POST", body: JSON.stringify({ threadId: bot.threadId }) }).catch(() => { });
           } else if (group?.unread) {
-            api(`/api/groups/${id}/read`, { method: "POST" }).catch(() => {});
+            api(`/api/groups/${id}/read`, { method: "POST" }).catch(() => { });
           }
           break;
         }
@@ -4189,7 +4194,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           const answer = liveCallFromFrame(body);
           if (alive && answer) flushSync(() => rawDispatch({ type: "liveCallLookup", call: answer.call, since, seq }));
         })
-        .catch(() => {});
+        .catch(() => { });
       const chat = () =>
         api(`/api/bots?messages=${MESSAGE_PAGE_SIZE}`).then(({ bots, groups, sections, computerControl, botQueuedMessages }) => {
           if (!alive) return;
@@ -4316,12 +4321,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           const shown = selected?.switchingTo ?? selected?.threadId;
           const selectedTask = bot.tasks?.find((task) => task.threadId === shown);
           if (bot.id === stateRef.current.selectedId && stateRef.current.activeView === "chat" &&
-              (selectedTask?.unread || (!bot.tasks && bot.unread))) {
+            (selectedTask?.unread || (!bot.tasks && bot.unread))) {
             if (selectedTask) selectedTask.unread = false;
             // Hidden routine runs must not put the dot back on the next frame.
             // No task list: the bot flag is the unread signal.
             bot.unread = botShowsUnread(bot);
-            fetch(`/api/bots/${bot.id}/read`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ threadId: shown }) }).catch(() => {});
+            fetch(`/api/bots/${bot.id}/read`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ threadId: shown }) }).catch(() => { });
           }
           rawDispatch({
             type: "botPatched",
@@ -4334,7 +4339,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           // reading the selected room clears its badge immediately
           if (group.unread && group.id === stateRef.current.selectedId) {
             group.unread = false;
-            fetch(`/api/groups/${group.id}/read`, { method: "POST" }).catch(() => {});
+            fetch(`/api/groups/${group.id}/read`, { method: "POST" }).catch(() => { });
           }
           rawDispatch({ type: "groupPatched", group });
           break;
@@ -4389,8 +4394,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           }
           break;
         case "computer":
-          rawDispatch({ type: "computerStart", botId: frame.botId,
-            start: { state: frame.state, ...(frame.place ? { place: frame.place } : {}) } });
+          rawDispatch({
+            type: "computerStart", botId: frame.botId,
+            start: { state: frame.state, ...(frame.place ? { place: frame.place } : {}) }
+          });
           break;
         case "computer-control":
           rawDispatch({

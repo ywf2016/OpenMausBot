@@ -112,7 +112,7 @@ describe("Company models in the connected Organisation panel", () => {
   });
 
   it("offers nothing when every bot already runs", () => {
-    fixture.bots = [bot("b2", "Writer", "grok"), bot("b4", "Clerk", "company.fixture.anthropic")];
+    fixture.bots = [bot("b2", "Writer", "kimi"), bot("b4", "Clerk", "company.fixture.anthropic")];
     expect(render().html).not.toContain("bots that can’t run");
     expect(buttons().some((node) => String(node.props.children).startsWith("Use "))).toBe(false);
     expect(fixture.dispatch).not.toHaveBeenCalled();
@@ -121,8 +121,8 @@ describe("Company models in the connected Organisation panel", () => {
   it("follows a company-models-only policy: personal bots count and the target is never a refused engine", async () => {
     const refused = { organizationName: "Fixture Company", reason: "Fixture Company allows only company models on this computer. Choose a Company model for this bot." };
     const router: InstanceInfo = { ...companyClaude, instanceId: "company.fixture.openrouter", driverKind: "openai-compat", displayName: "Company · Fixture Company · OpenRouter", models: { default: "fixture/router", options: [] } };
-    fixture.instances = [{ ...workingGrok, policy: refused }, { ...companyClaude, policy: { ...refused, reason: "Fixture Company does not allow the Claude engine on this computer." } }, router];
-    fixture.bots = [bot("b2", "Writer", "grok")];
+    fixture.instances = [{ ...workingKimi, policy: refused }, { ...companyClaude, policy: { ...refused, reason: "Fixture Company does not allow the Claude engine on this computer." } }, router];
+    fixture.bots = [bot("b2", "Writer", "kimi")];
     const view = render();
     expect(view.html).toContain("does not allow the Claude engine");
     const action = view.nodes.find((node) => node.type === "button" && node.props.children === "Use Company · Fixture Company · OpenRouter for 1 bot that can’t run");

@@ -49,7 +49,6 @@ describe("provider key check", () => {
     expect(providerModelsUrl("openaiCompat")).toBe("https://openrouter.ai/api/v1/models");
     expect(providerModelsUrl("openaiCompat", "https://api.openai.com/v1")).toBe("https://api.openai.com/v1/models");
     expect(providerModelsUrl("xai", "")).toBe("https://api.x.ai/v1/models");
-    expect(providerModelsUrl("mistral")).toBe("https://api.mistral.ai/v1/models");
   });
 
   it("sends the provider's own header shape and returns a few model ids on success", async () => {
@@ -68,7 +67,7 @@ describe("provider key check", () => {
     const models = [{ id: "large" }, null, { name: "small" }, { id: 7 }, { id: "x".repeat(121) },
       { id: "three" }, { id: "four" }, { id: "five" }, { id: "six" }];
     const provider: typeof fetch = async () => Response.json(shape === "array" ? models : { [shape]: models });
-    expect(await checkProviderKey({ provider: "mistral", key: "fixture" }, provider))
+    expect(await checkProviderKey({ provider: "openaiCompat", key: "fixture" }, provider))
       .toEqual({ ok: true, check: "models", models: ["large", "small", "three", "four", "five"] });
   });
 
@@ -119,32 +118,6 @@ describe("provider key check", () => {
     };
     expect(await checkProviderKey({ provider: "openai", key: "sk-fixture" }, openAi)).toEqual({ ok: true, check: "models", models: ["gpt-5"] });
     expect(urls).toEqual(["https://api.openai.com/v1/models"]);
-  });
-
-  it("checks Groq at its preset endpoint without claiming chat authentication", async () => {
-    const groq: typeof fetch = async (input, init) => {
-      expect(String(input)).toBe("https://api.groq.com/openai/v1/models");
-      expect(new Headers(init?.headers).get("authorization")).toBe("Bearer fixture-groq");
-      expect(init?.redirect).toBe("manual");
-      return Response.json({ data: [{ id: "openai/gpt-oss-120b" }] });
-    };
-    expect(await checkProviderKey({ provider: "groq", key: "fixture-groq" }, groq))
-      .toEqual({ ok: true, check: "models", models: ["openai/gpt-oss-120b"] });
-    expect(await checkProviderKey({ provider: "groq", key: "bad-key", url: base }))
-      .toEqual({ ok: false, reason: "rejected", status: 401 });
-  });
-
-  it("checks Meta at its preset endpoint without claiming chat authentication", async () => {
-    const meta: typeof fetch = async (input, init) => {
-      expect(String(input)).toBe("https://api.meta.ai/v1/models");
-      expect(new Headers(init?.headers).get("authorization")).toBe("Bearer fixture-meta");
-      expect(init?.redirect).toBe("manual");
-      return Response.json({ data: [{ id: "muse-spark-1.3" }] });
-    };
-    expect(await checkProviderKey({ provider: "meta", key: "fixture-meta" }, meta))
-      .toEqual({ ok: true, check: "models", models: ["muse-spark-1.3"] });
-    expect(await checkProviderKey({ provider: "meta", key: "bad-key", url: base }))
-      .toEqual({ ok: false, reason: "rejected", status: 401 });
   });
 
   it("does not call a custom compatible server's nonexistent /key endpoint", async () => {
