@@ -172,10 +172,10 @@ export async function fetchSetupModels(
     // Model IDs and display labels reach the terminal; block control sequences.
     // eslint-disable-next-line no-control-regex
     if (!id || /[\u0000-\u001f\u007f]/u.test(id) || models.has(id)) continue;
-    // eslint-disable-next-line no-control-regex
     const name =
       typeof item?.name === "string"
-        ? item.name.replace(/[\u0000-\u001f\u007f]/gu, "").trim()
+        ? // eslint-disable-next-line no-control-regex
+          item.name.replace(/[\u0000-\u001f\u007f]/gu, "").trim()
         : "";
     models.set(id, { id, label: name || id });
   }
